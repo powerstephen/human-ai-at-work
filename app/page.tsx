@@ -5,7 +5,7 @@ import React, { useMemo, useState } from 'react';
    Types, constants, helpers
 ============================================================ */
 type Team = 'all'|'hr'|'ops'|'marketing'|'sales'|'support'|'product';
-type Currency = 'EUR'|'USD'|'GBP';
+type Currency = 'EUR'|'USD'|'GBP'|'AUD';
 type Goal = 'throughput'|'quality'|'onboarding'|'retention'|'cost'|'upskilling';
 
 const BLUE = '#3366FE';
@@ -29,7 +29,20 @@ const GOAL_META: Record<Goal, {label:string; hint:string}> = {
   upskilling: { label: 'Upskilling',              hint: 'Competency coverage → gains'},
 };
 
-const symbol = (c: Currency) => (c === 'EUR' ? '€' : c === 'USD' ? '$' : '£');
+const CURRENCY_ICON: Record<Currency,string> = {
+  EUR: '🇪🇺',
+  USD: '🇺🇸',
+  GBP: '🇬🇧',
+  AUD: '🇦🇺',
+};
+
+const symbol = (c: Currency) => (
+  c === 'EUR' ? '€' :
+  c === 'USD' ? '$' :
+  c === 'GBP' ? '£' :
+  'A$'
+);
+
 const fmtMoney = (n:number, c:Currency) =>
   new Intl.NumberFormat('en', { style:'currency', currency:c, maximumFractionDigits:0 }).format(n);
 const clamp = (n:number, lo:number, hi:number)=>Math.max(lo, Math.min(hi, n));
@@ -184,10 +197,10 @@ function Calculator(){
   /* ------ Steps ------ */
   const steps = useMemo(()=>{
     const arr: {key:string; title:string}[] = [];
-    arr.push({ key:'team',      title:'Team' });
+    arr.push({ key:'team',      title:'Basics' });
     arr.push({ key:'maturity',  title:'AI Maturity' });
-    arr.push({ key:'priorities',title:'Priorities' });
-    selected.forEach(g => arr.push({ key:`goal-${g}`, title: GOAL_META[g].label }));
+    arr.push({ key:'priorities',title:'Pick top 3 priorities' });
+    selected.forEach(g => arr.push({ key:`goal-${g}`, title: `Configure: ${GOAL_META[g].label}` }));
     arr.push({ key:'results',   title:'Results' });
     return arr;
   }, [selected]);
@@ -200,11 +213,11 @@ function Calculator(){
   ============================================================ */
   const container = { maxWidth: 1120, margin:'0 auto', padding:'24px 20px 32px', fontFamily:'Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial', boxSizing:'border-box', color:'#0E1320' } as const;
 
-  // HERO image (image only — no title or subheading). Exact width match to cards.
+  // HERO image (image only — no title or subheading). Match card outer width.
   const heroImgWrap = {
     width:'100%',
-    maxWidth:980,             // match cards
-    margin:'0 auto 16px',     // centered
+    maxWidth:982,            // 980 card + 2px border
+    margin:'0 auto 16px',
     position:'relative',
     zIndex:2
   } as const;
@@ -215,7 +228,7 @@ function Calculator(){
     maxHeight:320,
     objectFit:'cover',
     display:'block',
-    borderRadius:0,           // no rounded corners
+    borderRadius:0,
     border:'none',
     boxShadow:'none'
   } as const;
@@ -270,12 +283,13 @@ function Calculator(){
               <div key={s.key} style={{ display:'flex', alignItems:'center', gap:6, minWidth:0, opacity:i<=step?1:.55 }}>
                 <div style={{
                   width:26, height:26, borderRadius:999,
-                  border: i<=step ? 'none' : '2px solid #CFD8FF',
-                  background: i<=step ? BLUE : '#fff',
-                  color: i<=step ? '#fff' : '#0E1320',
-                  display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:12, flex:'0 0 auto'
+                  border: 'none',
+                  background: BLUE,     // blue circle always
+                  color: '#fff',        // white number
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontWeight:900, fontSize:12, flex:'0 0 auto'
                 }}>{i+1}</div>
-                <span style={{ fontWeight:800, fontSize:12, whiteSpace:'nowrap' }}>{s.title}</span>
+                <span style={{ fontWeight:800, fontSize:12, whiteSpace:'nowrap', color:'#0E1320' }}>{s.title}</span>
               </div>
             ))}
           </div>
@@ -303,10 +317,13 @@ function Calculator(){
             <div>
               <label style={label}>Currency</label>
               <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {(['EUR','USD','GBP'] as Currency[]).map(c=>{
+                {(['EUR','USD','GBP','AUD'] as Currency[]).map(c=>{
                   const active = currency===c;
                   return (
-                    <button key={c} type="button" style={chip(active)} onClick={()=>setCurrency(c)}>{c}</button>
+                    <button key={c} type="button" style={chip(active)} onClick={()=>setCurrency(c)}>
+                      <span aria-hidden style={{ fontSize:14, lineHeight:1 }}>{CURRENCY_ICON[c]}</span>
+                      <span style={{ fontWeight:900 }}>{c}</span>
+                    </button>
                   );
                 })}
               </div>
@@ -466,7 +483,7 @@ function Calculator(){
         />
       )}
 
-      {/* RESULTS (with headers & spaced columns) */}
+      {/* RESULTS */}
       {steps[step]?.key==='results' && (
         <section style={card}>
           <h3 style={h3}>Results</h3>
@@ -537,7 +554,7 @@ function KPI({ label, value }:{label:string; value:string}){
   );
 }
 
-/** New: table-like layout with headers */
+/** Table-like breakdown with headers */
 function PrioritiesTable({
   currency,
   rows
@@ -749,7 +766,7 @@ function GoalStep(props: {
   const h3 = { margin:'0 0 .7rem', fontSize:'1.06rem', fontWeight:900, color:'#0F172A' } as const;
   const gridAuto = { display:'grid', gap:14, gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', alignItems:'start' } as const;
   const help = { fontSize:'.86rem', color:'#667085' } as const;
-  const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800, border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
+  const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800', border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
   const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const;
 
   if (goal==='throughput') {
