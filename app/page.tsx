@@ -5,7 +5,7 @@ import RoiQuestionnaire from "../components/RoiQuestionnaire";
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-neutral-900">
-      {/* HERO — flush with form width, proportional height */}
+      {/* HERO — flush with form width, proportional height, no extra gutters */}
       <section className="relative w-full pt-2 pb-0">
         <div className="mx-auto max-w-3xl px-4">
           <div className="relative h-[180px] sm:h-[200px] md:h-[220px]">
