@@ -300,7 +300,6 @@ function StepAiImpact({
       </div>
 
       {/* Hook for future impact sliders/toggles per priority */}
-      {/* e.g., quality error-rate reduction %, retention improvement %, etc. */}
     </div>
   );
 }
