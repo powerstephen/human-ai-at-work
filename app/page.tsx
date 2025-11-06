@@ -200,11 +200,24 @@ function Calculator(){
   ============================================================ */
   const container = { maxWidth: 1120, margin:'0 auto', padding:'24px 20px 32px', fontFamily:'Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial', boxSizing:'border-box', color:'#0E1320' } as const;
 
-  // HERO image (image only — no title or subheading)
-  const heroImgWrap = { width:'100%', marginBottom:16, position:'relative', zIndex:2 } as const;
+  // HERO image (image only — no title or subheading). Exact width match to cards.
+  const heroImgWrap = {
+    width:'100%',
+    maxWidth:980,             // match cards
+    margin:'0 auto 16px',     // centered
+    position:'relative',
+    zIndex:2
+  } as const;
+
   const heroImg = {
-    width:'100%', height:'auto', maxHeight: 320, objectFit:'cover', display:'block',
-    borderRadius:18, border:'1px solid #E7ECF7', boxShadow:'0 18px 40px rgba(15,42,120,.08)'
+    width:'100%',
+    height:'auto',
+    maxHeight:320,
+    objectFit:'cover',
+    display:'block',
+    borderRadius:0,           // no rounded corners
+    border:'none',
+    boxShadow:'none'
   } as const;
 
   const card = { background:'#fff', border:'1px solid #E7ECF7', borderRadius:16, boxShadow:'0 10px 28px rgba(12,20,38,.08)', padding:18, maxWidth:980, margin:'16px auto' } as const;
@@ -230,7 +243,7 @@ function Calculator(){
   const kpiLabel = { fontSize:'.76rem', color:'#64748B', fontWeight:800, marginTop:2 } as const;
   const kpiValue = { fontWeight:900, fontSize:'1.16rem' } as const;
 
-  // Stepper labels evenly spread (no gradients)
+  // Stepper labels evenly spread
   const stepperWrap = { display:'flex', alignItems:'center', gap:10, marginTop:10, flexWrap:'wrap' } as const;
   const stepperLabels = { display:'flex', justifyContent:'space-between', width:'100%', gap:8, flexWrap:'nowrap' } as const;
 
