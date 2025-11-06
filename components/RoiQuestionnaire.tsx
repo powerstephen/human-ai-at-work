@@ -3,8 +3,11 @@
 
 import { useMemo, useState } from "react";
 
-/* -------------------- Types & constants -------------------- */
+/* -------------------- Helpers -------------------- */
+const n = (v: unknown, fallback = 0) =>
+  Number.isFinite(Number(v)) ? Number(v) : fallback;
 
+/* -------------------- Types & constants -------------------- */
 type PriorityKey =
   | "Productivity / Throughput"
   | "Upskilling"
@@ -25,16 +28,10 @@ const PRIORITIES: Array<{ key: PriorityKey; blurb: string }> = [
 type DepartmentScope = "Company-wide" | "Specific department";
 
 const DEPARTMENTS = [
-  "Sales",
-  "Marketing",
-  "Customer Support",
-  "HR",
-  "Finance",
-  "Engineering",
-  "Operations",
-  "Product",
-  "Other",
+  "Sales","Marketing","Customer Support","HR","Finance","Engineering","Operations","Product","Other",
 ];
+
+type PriorityInputs = { coveragePct: number; improvementPct: number };
 
 type FormData = {
   // Step 1 — Basics
@@ -48,18 +45,12 @@ type FormData = {
   // Step 2 — Priorities (up to 3)
   priorities: PriorityKey[];
 
-  // Step 3 — AI Maturity + base hours (per-person weekly)
-  aiMaturity: number | ""; // 1–10
-  hoursSavedPerWeekBase: number | ""; // base per person weekly
+  // Step 3 — AI Maturity + base per-person hours
+  aiMaturity: number | "";      // 1–10 (display only; not used in math unless you want)
+  hoursSavedBase: number | "";  // base hours saved per person per week
 
-  // Steps 4–6 — two box inputs per chosen priority (NO sliders)
-  // We’ll use generic but monetisable inputs:
-  // - coveragePct: % of work affected by this priority (0–100)
-  // - improvementPct: % improvement within that covered work (0–100)
-  priorityInputs: Record<
-    PriorityKey,
-    { coveragePct: number; improvementPct: number }
-  >;
+  // Steps 4–6 — per-selected priority (TWO inputs, no sliders)
+  priorityInputs: Record<PriorityKey, PriorityInputs>;
 };
 
 const initialData: FormData = {
@@ -71,7 +62,7 @@ const initialData: FormData = {
   averageSalary: "",
   priorities: [],
   aiMaturity: 5,
-  hoursSavedPerWeekBase: 1,
+  hoursSavedBase: 1,
   priorityInputs: {
     "Productivity / Throughput": { coveragePct: 50, improvementPct: 10 },
     Upskilling: { coveragePct: 30, improvementPct: 10 },
@@ -82,48 +73,31 @@ const initialData: FormData = {
   },
 };
 
-/* -------------------- Step labels (always 8) -------------------- */
-
-const STEP_LABELS = [
-  "Basics",
-  "Priorities",
-  "AI Maturity",
-  "Priority #1",
-  "Priority #2",
-  "Priority #3",
-  "Summary",
-  "ROI",
+const STEPS = [
+  "Basics","Priorities","AI Maturity","Priority #1","Priority #2","Priority #3","Summary","ROI",
 ];
 
-/* -------------------- Main -------------------- */
-
+/* -------------------- Component -------------------- */
 export default function RoiQuestionnaire() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormData>(initialData);
 
-  const totalSteps = STEP_LABELS.length;
-  const progress = useMemo(
-    () => Math.round(((step + 1) / totalSteps) * 100),
-    [step, totalSteps]
-  );
+  const totalSteps = STEPS.length;
+  const progress = Math.round(((step + 1) / totalSteps) * 100);
 
   const next = () => step < totalSteps - 1 && setStep(step + 1);
   const back = () => step > 0 && setStep(step - 1);
 
   const setField =
     (key: keyof FormData) =>
-    (
-      e:
-        | React.ChangeEvent<HTMLInputElement>
-        | React.ChangeEvent<HTMLSelectElement>
-    ) => {
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = e.target.value;
       if (
         key === "employees" ||
         key === "adoptionRatePct" ||
         key === "averageSalary" ||
         key === "aiMaturity" ||
-        key === "hoursSavedPerWeekBase"
+        key === "hoursSavedBase"
       ) {
         setData((d) => ({ ...d, [key]: value === "" ? "" : Number(value) }));
       } else {
@@ -146,80 +120,68 @@ export default function RoiQuestionnaire() {
 
   const updatePriorityInput = (
     p: PriorityKey,
-    field: "coveragePct" | "improvementPct",
+    field: keyof PriorityInputs,
     value: number
   ) => {
     setData((d) => ({
       ...d,
       priorityInputs: {
         ...d.priorityInputs,
-        [p]: { ...d.priorityInputs[p], [field]: isFinite(value) ? value : 0 },
+        [p]: {
+          ...d.priorityInputs[p],
+          [field]: n(value, 0),
+        },
       },
     }));
   };
 
-  // Map steps 4–6 to selected priorities (pad to 3 placeholders)
-  const sel = [...data.priorities];
-  while (sel.length < 3) sel.push(undefined as unknown as PriorityKey);
-  const [p1, p2, p3] = sel;
+  // Map steps 4–6 to selected priorities (pad to 3)
+  const chosen = [...data.priorities];
+  while (chosen.length < 3) chosen.push(undefined as unknown as PriorityKey);
+  const [p1, p2, p3] = chosen;
 
-  // Derived metrics
-  const perPersonHoursFromPriorities = useMemo(() => {
-    // Computes extra per-person hours gained from priority inputs
-    // Formula: base * sum_over_selected(coverage% * improvement%) / 10000
-    // (kept intentionally simple and transparent)
-    const base = Number(data.hoursSavedPerWeekBase || 0);
-    if (!data.priorities.length || base <= 0) return 0;
+  /* -------------------- Calculations (robust) -------------------- */
+  // Base per-person hours saved
+  const baseHrs = n(data.hoursSavedBase, 0);
 
-    const sumFactor = data.priorities.reduce((acc, p) => {
-      const { coveragePct, improvementPct } = data.priorityInputs[p];
-      const f = (Math.max(0, Math.min(100, coveragePct)) *
-        Math.max(0, Math.min(100, improvementPct))) / 10000;
-      return acc + f;
-    }, 0);
+  // Priority factor = Σ(coverage% * improvement%) / 10000 across selected priorities
+  const priorityFactor = (data.priorities || []).reduce((acc, p) => {
+    const inp = data.priorityInputs[p];
+    if (!inp) return acc;
+    const cov = Math.min(100, Math.max(0, n(inp.coveragePct)));
+    const imp = Math.min(100, Math.max(0, n(inp.improvementPct)));
+    return acc + (cov * imp) / 10000;
+  }, 0);
 
-    return base * sumFactor;
-  }, [data.priorities, data.priorityInputs, data.hoursSavedPerWeekBase]);
+  // Total per-person weekly hours saved = base + (base * priorityFactor)
+  const perPersonWeekly = Math.max(0, baseHrs + baseHrs * priorityFactor);
 
-  const perPersonHoursWeekly = useMemo(() => {
-    const base = Number(data.hoursSavedPerWeekBase || 0);
-    return Math.max(0, base + perPersonHoursFromPriorities);
-  }, [data.hoursSavedPerWeekBase, perPersonHoursFromPriorities]);
+  // Per-team weekly = per-person * employees * adoption%
+  const employees = n(data.employees, 0);
+  const adoption = Math.min(1, Math.max(0, n(data.adoptionRatePct, 0) / 100));
+  const teamWeekly = Math.max(0, perPersonWeekly * employees * adoption);
 
-  const hoursSavedPerTeamWeekly = useMemo(() => {
-    const perPerson = perPersonHoursWeekly;
-    const employees = Number(data.employees || 0);
-    const adoption = Number(data.adoptionRatePct || 0) / 100;
-    return Math.max(0, perPerson * employees * adoption);
-  }, [perPersonHoursWeekly, data.employees, data.adoptionRatePct]);
+  // Hourly rate from salary
+  const avgSalary = n(data.averageSalary, 0);
+  const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0;
 
-  const estimatedAnnualSavings = useMemo(() => {
-    const employees = Number(data.employees || 0);
-    const avgSalary = Number(data.averageSalary || 0);
-    const adoption = Number(data.adoptionRatePct || 0) / 100;
-    const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0; // 2080 hrs/yr
-    const raw =
-      employees * adoption * perPersonHoursWeekly * 52 * Math.max(0, hourlyRate);
-    return Math.round(Math.max(0, raw));
-  }, [data.employees, data.averageSalary, data.adoptionRatePct, perPersonHoursWeekly]);
+  // Annual savings = teamWeekly * 52 * hourlyRate
+  const annualSavings = Math.round(teamWeekly * 52 * Math.max(0, hourlyRate));
 
+  /* -------------------- UI -------------------- */
   return (
     <div className="mx-auto">
-      {/* Progress — light theme with BLUE accents */}
+      {/* Progress — blue theme */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm font-medium text-neutral-700">
           <span>Step {step + 1} of {totalSteps}</span>
           <span>{progress}%</span>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
-          <div
-            className="h-2 rounded-full bg-blue-600 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
         </div>
-
         <ol className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] text-neutral-600 sm:grid-cols-8">
-          {STEP_LABELS.map((label, i) => {
+          {STEPS.map((label, i) => {
             const active = i === step;
             const done = i < step;
             return (
@@ -241,7 +203,7 @@ export default function RoiQuestionnaire() {
         </ol>
       </div>
 
-      {/* Card container (light, blue accents) */}
+      {/* Card */}
       <div className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
         {step === 0 && <StepBasics data={data} setField={setField} />}
         {step === 1 && <StepPriorities data={data} togglePriority={togglePriority} />}
@@ -249,8 +211,8 @@ export default function RoiQuestionnaire() {
           <StepAIMaturity
             data={data}
             setField={setField}
-            perPersonHoursWeekly={perPersonHoursWeekly}
-            hoursSavedPerTeamWeekly={hoursSavedPerTeamWeekly}
+            perPersonWeekly={perPersonWeekly}
+            teamWeekly={teamWeekly}
           />
         )}
         {step === 3 && (
@@ -258,7 +220,7 @@ export default function RoiQuestionnaire() {
             title="Priority #1"
             priority={p1}
             inputs={p1 ? data.priorityInputs[p1] : undefined}
-            onChange={(field, value) => p1 && updatePriorityInput(p1, field, value)}
+            onChange={(f, v) => p1 && updatePriorityInput(p1, f, v)}
           />
         )}
         {step === 4 && (
@@ -266,7 +228,7 @@ export default function RoiQuestionnaire() {
             title="Priority #2"
             priority={p2}
             inputs={p2 ? data.priorityInputs[p2] : undefined}
-            onChange={(field, value) => p2 && updatePriorityInput(p2, field, value)}
+            onChange={(f, v) => p2 && updatePriorityInput(p2, f, v)}
           />
         )}
         {step === 5 && (
@@ -274,18 +236,19 @@ export default function RoiQuestionnaire() {
             title="Priority #3"
             priority={p3}
             inputs={p3 ? data.priorityInputs[p3] : undefined}
-            onChange={(field, value) => p3 && updatePriorityInput(p3, field, value)}
+            onChange={(f, v) => p3 && updatePriorityInput(p3, f, v)}
           />
         )}
         {step === 6 && (
           <StepSummary
             data={data}
-            perPersonHoursWeekly={perPersonHoursWeekly}
-            hoursSavedPerTeamWeekly={hoursSavedPerTeamWeekly}
-            estimatedAnnualSavings={estimatedAnnualSavings}
+            perPersonWeekly={perPersonWeekly}
+            teamWeekly={teamWeekly}
+            hourlyRate={hourlyRate}
+            annualSavings={annualSavings}
           />
         )}
-        {step === 7 && <StepROI estimatedAnnualSavings={estimatedAnnualSavings} />}
+        {step === 7 && <StepROI annualSavings={annualSavings} />}
 
         {/* Nav */}
         <div className="mt-6 flex items-center justify-between">
@@ -322,7 +285,7 @@ export default function RoiQuestionnaire() {
   );
 }
 
-/* -------------------- Step 1: Basics -------------------- */
+/* ---------- Step 1: Basics ---------- */
 function StepBasics({
   data,
   setField,
@@ -334,9 +297,7 @@ function StepBasics({
     <div className="grid grid-cols-1 gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Company name
-          </label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Company name</label>
           <input
             type="text"
             value={data.companyName}
@@ -348,9 +309,7 @@ function StepBasics({
 
         {/* Scope + Department */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Scope
-          </label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Scope</label>
           <select
             value={data.scope}
             onChange={setField("scope")}
@@ -373,18 +332,14 @@ function StepBasics({
           >
             <option value="">{data.scope === "Company-wide" ? "—" : "Select department"}</option>
             {DEPARTMENTS.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
+              <option key={d} value={d}>{d}</option>
             ))}
           </select>
         </div>
 
         {/* Headcount, Adoption, Salary */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Employees (in scope)
-          </label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Employees (in scope)</label>
           <input
             type="number"
             min={1}
@@ -396,9 +351,7 @@ function StepBasics({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Adoption (% of employees)
-          </label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Adoption (% of employees)</label>
           <input
             type="number"
             min={0}
@@ -411,9 +364,7 @@ function StepBasics({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-700">
-            Average salary (annual, local currency)
-          </label>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">Average salary (annual, local currency)</label>
           <input
             type="number"
             min={0}
@@ -428,7 +379,7 @@ function StepBasics({
   );
 }
 
-/* -------------------- Step 2: Priorities (multi-select up to 3, boxed with blurbs) -------------------- */
+/* ---------- Step 2: Priorities (boxed, pick up to 3) ---------- */
 function StepPriorities({
   data,
   togglePriority,
@@ -472,25 +423,23 @@ function StepPriorities({
   );
 }
 
-/* -------------------- Step 3: AI Maturity (1–10) + KPIs -------------------- */
+/* ---------- Step 3: AI Maturity (1–10) + KPIs ---------- */
 function StepAIMaturity({
   data,
   setField,
-  perPersonHoursWeekly,
-  hoursSavedPerTeamWeekly,
+  perPersonWeekly,
+  teamWeekly,
 }: {
   data: FormData;
   setField: (key: keyof FormData) => (e: any) => void;
-  perPersonHoursWeekly: number;
-  hoursSavedPerTeamWeekly: number;
+  perPersonWeekly: number;
+  teamWeekly: number;
 }) {
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-      {/* Left: slider + base per-person input */}
+      {/* Left: slider + base hours */}
       <div className="md:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-neutral-700">
-          AI maturity (1–10)
-        </label>
+        <label className="mb-1 block text-sm font-medium text-neutral-700">AI maturity (1–10)</label>
         <input
           type="range"
           min={1}
@@ -501,11 +450,7 @@ function StepAIMaturity({
           className="w-full accent-blue-600"
         />
         <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
-          <span>1 • Ad-hoc</span>
-          <span>3</span>
-          <span>5 • Emerging</span>
-          <span>8</span>
-          <span>10 • Scaled</span>
+          <span>1 • Ad-hoc</span><span>3</span><span>5 • Emerging</span><span>8</span><span>10 • Scaled</span>
         </div>
 
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -516,8 +461,8 @@ function StepAIMaturity({
             <input
               type="number"
               min={0}
-              value={data.hoursSavedPerWeekBase}
-              onChange={setField("hoursSavedPerWeekBase")}
+              value={data.hoursSavedBase}
+              onChange={setField("hoursSavedBase")}
               placeholder="1.0"
               className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-blue-200"
             />
@@ -525,20 +470,20 @@ function StepAIMaturity({
         </div>
       </div>
 
-      {/* Right: KPI cards (per-person total & per-team weekly) */}
+      {/* Right: KPI cards */}
       <div className="space-y-3">
         <div className="rounded-xl border border-neutral-200 bg-white p-4">
           <div className="text-xs text-neutral-500">Hours saved</div>
           <div className="mt-1 text-sm font-semibold text-neutral-900">Per person (weekly)</div>
           <div className="mt-2 text-2xl font-bold text-neutral-900">
-            {perPersonHoursWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {perPersonWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
         <div className="rounded-xl border border-neutral-200 bg-white p-4">
           <div className="text-xs text-neutral-500">Hours saved</div>
           <div className="mt-1 text-sm font-semibold text-neutral-900">Per team (weekly)</div>
           <div className="mt-2 text-2xl font-bold text-neutral-900">
-            {hoursSavedPerTeamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {teamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>
@@ -546,7 +491,7 @@ function StepAIMaturity({
   );
 }
 
-/* -------------------- Steps 4–6: Priority detail (TWO BOX INPUTS — no sliders) -------------------- */
+/* ---------- Steps 4–6: TWO INPUTS per selected priority ---------- */
 function StepPriorityDetail({
   title,
   priority,
@@ -555,15 +500,13 @@ function StepPriorityDetail({
 }: {
   title: string;
   priority: PriorityKey | undefined;
-  inputs: { coveragePct: number; improvementPct: number } | undefined;
-  onChange: (field: "coveragePct" | "improvementPct", value: number) => void;
+  inputs: PriorityInputs | undefined;
+  onChange: (field: keyof PriorityInputs, value: number) => void;
 }) {
   if (!priority) {
     return (
       <div className="rounded-xl border border-neutral-200 bg-white p-5">
-        <div className="text-sm text-neutral-600">
-          Select priorities on Step 2 to configure this section.
-        </div>
+        <div className="text-sm text-neutral-600">Select priorities on Step 2 to configure this section.</div>
       </div>
     );
   }
@@ -602,24 +545,26 @@ function StepPriorityDetail({
             onChange={(e) => onChange("improvementPct", Number(e.target.value))}
             className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
           />
-          <p className="mt-1 text-xs text-neutral-500">Efficiency or quality lift within the covered portion.</p>
+          <p className="mt-1 text-xs text-neutral-500">Efficiency/quality lift within the covered portion.</p>
         </div>
       </div>
     </div>
   );
 }
 
-/* -------------------- Step 7: Summary (money right-aligned, hours block centered) -------------------- */
+/* ---------- Step 7: Summary (money right-aligned, hours centered) ---------- */
 function StepSummary({
   data,
-  perPersonHoursWeekly,
-  hoursSavedPerTeamWeekly,
-  estimatedAnnualSavings,
+  perPersonWeekly,
+  teamWeekly,
+  hourlyRate,
+  annualSavings,
 }: {
   data: FormData;
-  perPersonHoursWeekly: number;
-  hoursSavedPerTeamWeekly: number;
-  estimatedAnnualSavings: number;
+  perPersonWeekly: number;
+  teamWeekly: number;
+  hourlyRate: number;
+  annualSavings: number;
 }) {
   return (
     <div className="space-y-6">
@@ -633,22 +578,25 @@ function StepSummary({
           <div><span className="text-neutral-500">Employees (in scope):</span> {data.employees || "—"}</div>
           <div><span className="text-neutral-500">Adoption %:</span> {data.adoptionRatePct || "—"}</div>
           <div className="text-right"><span className="text-neutral-500">Average salary:</span> {data.averageSalary || "—"}</div>
-          <div className="md:col-span-2"><span className="text-neutral-500">Priorities:</span> {data.priorities.length ? data.priorities.join(", ") : "—"}</div>
+          <div className="md:col-span-2">
+            <span className="text-neutral-500">Priorities:</span>{" "}
+            {data.priorities.length ? data.priorities.join(", ") : "—"}
+          </div>
         </div>
       </div>
 
-      {/* Centered Hours Saved block (not cramped) */}
+      {/* Centered Hours Saved block */}
       <div className="mx-auto w-full max-w-md">
         <div className="rounded-xl border border-neutral-200 bg-white p-5 text-center">
           <div className="text-xs text-neutral-500">Hours saved (weekly)</div>
           <div className="mt-1 text-sm font-semibold text-neutral-900">Per person / Per team</div>
           <div className="mt-3 flex items-center justify-center gap-8">
             <div className="text-2xl font-bold text-neutral-900">
-              {perPersonHoursWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {perPersonWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               <div className="mt-1 text-xs font-normal text-neutral-500">Per person</div>
             </div>
             <div className="text-2xl font-bold text-neutral-900">
-              {hoursSavedPerTeamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              {teamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               <div className="mt-1 text-xs font-normal text-neutral-500">Per team</div>
             </div>
           </div>
@@ -660,19 +608,15 @@ function StepSummary({
         <h3 className="text-base font-semibold">Financials</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
           <div className="text-right">
-            <span className="text-neutral-500">Estimated annual savings:</span>{" "}
+            <span className="text-neutral-500">Hourly rate basis:</span>{" "}
             <span className="font-semibold">
-              {estimatedAnnualSavings.toLocaleString()}
+              {hourlyRate > 0 ? hourlyRate.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}
             </span>
           </div>
           <div className="text-right">
-            <span className="text-neutral-500">Hourly rate basis:</span>{" "}
+            <span className="text-neutral-500">Estimated annual savings:</span>{" "}
             <span className="font-semibold">
-              {Number(data.averageSalary || 0) > 0
-                ? (Number(data.averageSalary) / 2080).toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })
-                : "—"}
+              {annualSavings.toLocaleString()}
             </span>
           </div>
         </div>
@@ -681,17 +625,13 @@ function StepSummary({
   );
 }
 
-/* -------------------- Step 8: ROI -------------------- */
-function StepROI({ estimatedAnnualSavings }: { estimatedAnnualSavings: number }) {
+/* ---------- Step 8: ROI ---------- */
+function StepROI({ annualSavings }: { annualSavings: number }) {
   return (
     <div className="rounded-2xl border border-neutral-200 bg-white p-5">
       <h3 className="text-base font-semibold">Estimated Impact</h3>
-      <p className="mt-2 text-3xl font-bold">
-        {estimatedAnnualSavings.toLocaleString()}
-      </p>
-      <p className="text-sm text-neutral-600">
-        Estimated annual time-savings value (simple model).
-      </p>
+      <p className="mt-2 text-3xl font-bold">{annualSavings.toLocaleString()}</p>
+      <p className="text-sm text-neutral-600">Estimated annual time-savings value (simple model).</p>
     </div>
   );
 }
