@@ -3,6 +3,7 @@
 
 import { useMemo, useState } from "react";
 
+// ----- Priorities (6) -----
 type PriorityLabel =
   | "Productivity"
   | "Upskilling"
@@ -20,13 +21,15 @@ const PRIORITIES: PriorityLabel[] = [
   "Customer Experience (CX)",
 ];
 
+// ----- Form shape -----
 type FormData = {
   companyName: string;
   employees: number | "";
-  averageSalary: number | "";       // annual, local currency
-  hoursSavedPerWeek: number | "";   // per employee
-  adoptionRatePct: number | "";     // % of employees
-  priority: PriorityLabel | "";     // labeled priorities (6)
+  averageSalary: number | "";        // annual, local currency
+  hoursSavedPerWeek: number | "";    // per employee
+  adoptionRatePct: number | "";      // % of employees
+  workweeksPerYear: number | "";     // to restore earlier detail if it was there
+  priority: PriorityLabel | "";      // 6 labeled priorities
 };
 
 const initialData: FormData = {
@@ -35,9 +38,11 @@ const initialData: FormData = {
   averageSalary: "",
   hoursSavedPerWeek: "",
   adoptionRatePct: "",
+  workweeksPerYear: 52,              // sensible default
   priority: "",
 };
 
+// ----- Steps -----
 const STEPS = ["Company", "Current Workflow", "AI Impact", "Summary"];
 
 export default function RoiQuestionnaire() {
@@ -65,7 +70,8 @@ export default function RoiQuestionnaire() {
         key === "employees" ||
         key === "averageSalary" ||
         key === "hoursSavedPerWeek" ||
-        key === "adoptionRatePct"
+        key === "adoptionRatePct" ||
+        key === "workweeksPerYear"
       ) {
         setData((d) => ({
           ...d,
@@ -76,19 +82,17 @@ export default function RoiQuestionnaire() {
       }
     };
 
-  // Simple savings model using salary + hours saved + adoption
+  // ----- Simple savings model (neutral colours; no red) -----
   const estimatedAnnualSavings = useMemo(() => {
     const employees = Number(data.employees || 0);
     const avgSalary = Number(data.averageSalary || 0);
     const hoursSaved = Number(data.hoursSavedPerWeek || 0);
     const adoption = Number(data.adoptionRatePct || 0) / 100;
+    const weeks = Number(data.workweeksPerYear || 52);
 
-    // hourly baseline = 2080 working hours/year
-    const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0;
-
-    // savings = headcount * adoption * hoursSaved/week * 52 weeks * hourlyRate
+    const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0; // 2080 hrs baseline
     const raw =
-      employees * adoption * Math.max(0, hoursSaved) * 52 * Math.max(0, hourlyRate);
+      employees * adoption * Math.max(0, hoursSaved) * Math.max(1, weeks) * Math.max(0, hourlyRate);
 
     return Math.round(Math.max(0, raw));
   }, [
@@ -96,30 +100,26 @@ export default function RoiQuestionnaire() {
     data.averageSalary,
     data.hoursSavedPerWeek,
     data.adoptionRatePct,
+    data.workweeksPerYear,
   ]);
 
   return (
     <div className="mx-auto max-w-3xl">
-      {/* Progress */}
+      {/* Progress — neutral scheme */}
       <div className="mb-6">
         <div className="flex items-center justify-between text-sm font-medium text-neutral-700">
-          <span>
-            Step {step + 1} of {totalSteps}
-          </span>
+          <span>Step {step + 1} of {totalSteps}</span>
           <span>{progress}%</span>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
           <div
-            className="h-2 rounded-full bg-red-600 transition-all"
+            className="h-2 rounded-full bg-neutral-900 transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
         <div className="mt-2 grid grid-cols-4 gap-2 text-center text-xs text-neutral-500">
           {STEPS.map((label, i) => (
-            <div
-              key={label}
-              className={i === step ? "font-semibold text-neutral-800" : ""}
-            >
+            <div key={label} className={i === step ? "font-semibold text-neutral-900" : ""}>
               {label}
             </div>
           ))}
@@ -131,9 +131,7 @@ export default function RoiQuestionnaire() {
         {step === 0 && <StepCompany data={data} setField={setField} />}
         {step === 1 && <StepWorkflow data={data} setField={setField} />}
         {step === 2 && <StepAiImpact data={data} setField={setField} />}
-        {step === 3 && (
-          <StepSummary data={data} estimatedAnnualSavings={estimatedAnnualSavings} />
-        )}
+        {step === 3 && <StepSummary data={data} estimatedAnnualSavings={estimatedAnnualSavings} />}
 
         {/* Nav */}
         <div className="mt-6 flex items-center justify-between">
@@ -150,7 +148,7 @@ export default function RoiQuestionnaire() {
               <button
                 type="button"
                 onClick={onNext}
-                className="rounded-xl bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="rounded-xl bg-neutral-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
               >
                 Next
               </button>
@@ -192,7 +190,7 @@ function StepCompany({
           value={data.companyName}
           onChange={setField("companyName")}
           placeholder="Acme Inc."
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         />
       </div>
 
@@ -206,7 +204,7 @@ function StepCompany({
           value={data.employees}
           onChange={setField("employees")}
           placeholder="250"
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         />
       </div>
 
@@ -220,7 +218,7 @@ function StepCompany({
           value={data.averageSalary}
           onChange={setField("averageSalary")}
           placeholder="75000"
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         />
       </div>
     </div>
@@ -247,7 +245,7 @@ function StepWorkflow({
           value={data.hoursSavedPerWeek}
           onChange={setField("hoursSavedPerWeek")}
           placeholder="1.5"
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         />
       </div>
       <div>
@@ -261,7 +259,21 @@ function StepWorkflow({
           value={data.adoptionRatePct}
           onChange={setField("adoptionRatePct")}
           placeholder="35"
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium text-neutral-700">
+          Workweeks per year
+        </label>
+        <input
+          type="number"
+          min={1}
+          max={52}
+          value={data.workweeksPerYear}
+          onChange={setField("workweeksPerYear")}
+          placeholder="52"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         />
       </div>
     </div>
@@ -285,7 +297,7 @@ function StepAiImpact({
         <select
           value={data.priority}
           onChange={setField("priority")}
-          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-600"
+          className="w-full rounded-xl border border-neutral-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-neutral-900/30"
         >
           <option value="">Select priority</option>
           {PRIORITIES.map((p) => (
@@ -298,8 +310,6 @@ function StepAiImpact({
           Choose the primary outcome your team wants to optimise.
         </p>
       </div>
-
-      {/* Hook for future impact sliders/toggles per priority */}
     </div>
   );
 }
@@ -317,22 +327,10 @@ function StepSummary({
       <div className="rounded-xl border border-neutral-200 p-4">
         <h3 className="text-base font-semibold text-neutral-900">Overview</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-          <div>
-            <span className="text-neutral-500">Company:</span>{" "}
-            {data.companyName || "—"}
-          </div>
-          <div>
-            <span className="text-neutral-500">Employees:</span>{" "}
-            {data.employees || "—"}
-          </div>
-          <div>
-            <span className="text-neutral-500">Average salary:</span>{" "}
-            {data.averageSalary || "—"}
-          </div>
-          <div>
-            <span className="text-neutral-500">Priority:</span>{" "}
-            {data.priority || "—"}
-          </div>
+          <div><span className="text-neutral-500">Company:</span> {data.companyName || "—"}</div>
+          <div><span className="text-neutral-500">Employees:</span> {data.employees || "—"}</div>
+          <div><span className="text-neutral-500">Average salary:</span> {data.averageSalary || "—"}</div>
+          <div><span className="text-neutral-500">Priority:</span> {data.priority || "—"}</div>
         </div>
       </div>
 
