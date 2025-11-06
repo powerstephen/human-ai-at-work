@@ -45,3 +45,8 @@ main > header[style*="background: linear-gradient"] {
 }
 
 /* Keep the rest of the UI visible (progress bar uses a gradient on a SPAN, not matched here) */
+
+/* KILL ANY LEGACY GRADIENT PANELS ANYWHERE ON THE PAGE */
+main *[style*="linear-gradient"] {
+  display: none !important;
+}
