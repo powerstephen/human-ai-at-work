@@ -1,6 +1,6 @@
 // app/page.tsx
 import Image from "next/image";
-import RoiQuestionnaire from "@/components/RoiQuestionnaire";
+import RoiQuestionnaire from "../components/RoiQuestionnaire";
 
 export default function Home() {
   return (
