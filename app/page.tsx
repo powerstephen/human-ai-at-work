@@ -5,7 +5,7 @@ import RoiQuestionnaire from "@/components/RoiQuestionnaire";
 export default function Home() {
   return (
     <main className="min-h-screen bg-white">
-      {/* HERO — keep same placement, zoom out via object-contain */}
+      {/* HERO — same placement, zoomed OUT via object-contain */}
       <section className="relative w-full">
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="relative overflow-hidden rounded-2xl border border-neutral-200">
@@ -15,7 +15,7 @@ export default function Home() {
                 alt="AI at Work — ROI Calculator"
                 fill
                 priority
-                className="object-contain object-center" // <= zoomed OUT
+                className="object-contain object-center"
               />
             </div>
           </div>
