@@ -18,7 +18,7 @@ body{
 
 /* ---------- Cards ---------- */
 .card{
-  @apply bg-[var(--card)] text-[var(--ink)] rounded-2xl shadow-lg border border-[rgba(255,255,255,0.08)];
+  @apply bg-[var(--card)] text-[var(--ink)] rounded-2xl shadow-lg border border-white/10;
 }
 
 /* ---------- Buttons ---------- */
@@ -47,21 +47,15 @@ body{
 }
 
 /* ---------- Stepper ---------- */
-.stepper{
-  @apply w-full;
-}
+.stepper{ @apply w-full; }
 .stepper-track{
   @apply relative h-1.5 rounded-full bg-white/15 overflow-hidden;
 }
 .stepper-fill{
   @apply absolute left-0 top-0 h-full bg-[var(--brand-blue)];
 }
-.stepper-dots{
-  @apply mt-3 grid grid-cols-5 gap-2;
-}
-.step-dot{
-  @apply flex flex-col items-center gap-2;
-}
+.stepper-dots{ @apply mt-3 grid grid-cols-5 gap-2; }
+.step-dot{ @apply flex flex-col items-center gap-2; }
 .step-badge{
   @apply h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold border border-white/25;
 }
@@ -71,9 +65,7 @@ body{
 .step-badge--done{
   @apply bg-white text-[var(--ink)] border-white;
 }
-.step-label{
-  @apply text-xs text-white/80 text-center;
-}
+.step-label{ @apply text-xs text-white/80 text-center; }
 
 /* ---------- Hero image wrapper ---------- */
 .hero-wrap{
@@ -85,38 +77,24 @@ body{
 }
 
 /* ---------- KPI tiles (top summary) ---------- */
-.kpis{
-  @apply grid grid-cols-2 md:grid-cols-4 gap-4;
-}
+.kpis{ @apply grid grid-cols-2 md:grid-cols-4 gap-4; }
 .kpi{
-  @apply rounded-xl bg-white/8 border border-white/15 p-4 text-white;
+  /* changed bg-white/8 -> bg-white/10, border-white/15 -> border-white/20 */
+  @apply rounded-xl bg-white/10 border border-white/20 p-4 text-white;
 }
-.kpi .label{
-  @apply text-xs text-white/70 mb-1;
-}
-.kpi .value{
-  @apply text-lg md:text-xl font-semibold tracking-tight text-white;
-}
+.kpi .label{ @apply text-xs text-white/70 mb-1; }
+.kpi .value{ @apply text-lg md:text-xl font-semibold tracking-tight text-white; }
 
 /* ---------- Results Table ---------- */
-.results-table{
-  @apply w-full;
-}
+.results-table{ @apply w-full; }
 .results-head{
   @apply grid grid-cols-[1.2fr_2fr_1fr_1fr] text-xs uppercase tracking-wide text-[var(--muted)] px-3;
 }
 .results-row{
-  @apply grid grid-cols-[1.2fr_2fr_1fr_1fr] items-start px-3 py-3 border-t border-[rgba(51,102,254,0.18)];
+  /* changed border alpha from ~18% to 20% for a supported value */
+  @apply grid grid-cols-[1.2fr_2fr_1fr_1fr] items-start px-3 py-3 border-t border-[rgba(51,102,254,0.20)];
 }
-.results-money{
-  @apply text-right font-semibold text-[var(--ink)];
-}
-.results-hours{
-  @apply text-right font-semibold text-[var(--ink)];
-}
-.results-area{
-  @apply font-medium text-[var(--ink)];
-}
-.results-note{
-  @apply text-[13px] text-[var(--muted)];
-}
+.results-money{ @apply text-right font-semibold text-[var(--ink)]; }
+.results-hours{ @apply text-right font-semibold text-[var(--ink)]; }
+.results-area{ @apply font-medium text-[var(--ink)]; }
+.results-note{ @apply text-[13px] text-[var(--muted)]; }
