@@ -14,30 +14,12 @@ type PriorityKey =
   | "Customer Experience (CX)";
 
 const PRIORITIES: Array<{ key: PriorityKey; blurb: string }> = [
-  {
-    key: "Productivity / Throughput",
-    blurb: "Ship more work in less time — reduce cycle time and queues.",
-  },
-  {
-    key: "Upskilling",
-    blurb: "Lift team capability with faster onboarding and embedded guidance.",
-  },
-  {
-    key: "Quality",
-    blurb: "Fewer errors and rework — more consistent, reliable outputs.",
-  },
-  {
-    key: "Staff Retention",
-    blurb: "Lower burnout and attrition by removing repetitive busywork.",
-  },
-  {
-    key: "Scalability & Cost",
-    blurb: "Handle higher volume without adding headcount and cost.",
-  },
-  {
-    key: "Customer Experience (CX)",
-    blurb: "Faster, clearer responses that improve CSAT, NPS, and retention.",
-  },
+  { key: "Productivity / Throughput", blurb: "Ship more work in less time — reduce cycle time and queues." },
+  { key: "Upskilling", blurb: "Lift team capability with faster onboarding and embedded guidance." },
+  { key: "Quality", blurb: "Fewer errors and rework — more consistent, reliable outputs." },
+  { key: "Staff Retention", blurb: "Lower burnout and attrition by removing repetitive busywork." },
+  { key: "Scalability & Cost", blurb: "Handle higher volume without adding headcount and cost." },
+  { key: "Customer Experience (CX)", blurb: "Faster, clearer responses that improve CSAT, NPS, and retention." },
 ];
 
 type DepartmentScope = "Company-wide" | "Specific department";
@@ -70,8 +52,7 @@ type FormData = {
   aiMaturity: number | ""; // 1–10
   hoursSavedPerWeek: number | ""; // per person weekly
 
-  // Steps 4–6 — priority-specific controls (placeholders you can extend later)
-  // We'll capture a generic weight/impact per chosen priority (0–100)
+  // Steps 4–6 — priority-specific controls (simple weight/impact 0–100)
   priorityImpacts: Record<PriorityKey, number>;
 };
 
@@ -147,11 +128,8 @@ export default function RoiQuestionnaire() {
   const togglePriority = (p: PriorityKey) => {
     setData((d) => {
       const exists = d.priorities.includes(p);
-      if (exists) {
-        return { ...d, priorities: d.priorities.filter((x) => x !== p) };
-      }
+      if (exists) return { ...d, priorities: d.priorities.filter((x) => x !== p) };
       if (d.priorities.length >= 3) {
-        // replace the last one chosen with the new one
         const next = [...d.priorities];
         next[next.length - 1] = p;
         return { ...d, priorities: next };
@@ -160,7 +138,7 @@ export default function RoiQuestionnaire() {
     });
   };
 
-  // derived
+  // Derived
   const hoursSavedPerTeamWeekly = useMemo(() => {
     const perPerson = Number(data.hoursSavedPerWeek || 0);
     const employees = Number(data.employees || 0);
@@ -179,29 +157,27 @@ export default function RoiQuestionnaire() {
     return Math.round(Math.max(0, raw));
   }, [data.employees, data.averageSalary, data.hoursSavedPerWeek, data.adoptionRatePct]);
 
-  // Map steps 4–6 to selected priorities (pad to 3 with placeholders)
-  const selected = [...data.priorities];
-  while (selected.length < 3) selected.push(undefined as unknown as PriorityKey);
-  const [p1, p2, p3] = selected;
+  // Map steps 4–6 to selected priorities (pad to 3 placeholders)
+  const sel = [...data.priorities];
+  while (sel.length < 3) sel.push(undefined as unknown as PriorityKey);
+  const [p1, p2, p3] = sel;
 
   return (
     <div className="mx-auto">
-      {/* Progress — dark theme, numbered */}
+      {/* Progress — light theme with red accent (like that earlier build) */}
       <div className="mb-6">
-        <div className="flex items-center justify-between text-sm font-medium text-neutral-300">
-          <span>
-            Step {step + 1} of {totalSteps}
-          </span>
+        <div className="flex items-center justify-between text-sm font-medium text-neutral-700">
+          <span>Step {step + 1} of {totalSteps}</span>
           <span>{progress}%</span>
         </div>
-        <div className="mt-2 h-2 w-full rounded-full bg-neutral-800">
+        <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
           <div
-            className="h-2 rounded-full bg-neutral-200 transition-all"
+            className="h-2 rounded-full bg-red-600 transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <ol className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] text-neutral-400 sm:grid-cols-8">
+        <ol className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] text-neutral-600 sm:grid-cols-8">
           {STEP_LABELS.map((label, i) => {
             const active = i === step;
             const done = i < step;
@@ -211,10 +187,10 @@ export default function RoiQuestionnaire() {
                 className={[
                   "rounded-md border px-2 py-1",
                   active
-                    ? "border-neutral-300 bg-neutral-900 text-neutral-100"
+                    ? "border-red-600 bg-red-50 text-red-700"
                     : done
-                    ? "border-neutral-700 bg-neutral-800 text-neutral-200"
-                    : "border-neutral-800 bg-neutral-900/40",
+                    ? "border-neutral-300 bg-neutral-100 text-neutral-800"
+                    : "border-neutral-200 bg-white",
                 ].join(" ")}
               >
                 {i + 1}. {label}
@@ -224,12 +200,10 @@ export default function RoiQuestionnaire() {
         </ol>
       </div>
 
-      {/* Card container (dark) */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5 md:p-6">
+      {/* Card container (light) */}
+      <div className="rounded-2xl border border-neutral-200 bg-white p-5 md:p-6">
         {step === 0 && <StepBasics data={data} setField={setField} />}
-        {step === 1 && (
-          <StepPriorities data={data} togglePriority={togglePriority} />
-        )}
+        {step === 1 && <StepPriorities data={data} togglePriority={togglePriority} />}
         {step === 2 && (
           <StepAIMaturity
             data={data}
@@ -276,7 +250,12 @@ export default function RoiQuestionnaire() {
             }
           />
         )}
-        {step === 6 && <StepSummaryInputs data={data} />}
+        {step === 6 && (
+          <StepSummaryInputs
+            data={data}
+            hoursSavedPerTeamWeekly={hoursSavedPerTeamWeekly}
+          />
+        )}
         {step === 7 && <StepROI estimatedAnnualSavings={estimatedAnnualSavings} />}
 
         {/* Nav */}
@@ -285,7 +264,7 @@ export default function RoiQuestionnaire() {
             type="button"
             onClick={back}
             disabled={step === 0}
-            className="rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-xl border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Back
           </button>
@@ -294,14 +273,14 @@ export default function RoiQuestionnaire() {
               <button
                 type="button"
                 onClick={next}
-                className="rounded-xl border border-neutral-200 bg-neutral-100 px-5 py-2 text-sm font-semibold text-neutral-950 hover:bg-white"
+                className="rounded-xl bg-red-600 px-5 py-2 text-sm font-semibold text-white hover:bg-red-700"
               >
                 Next
               </button>
             ) : (
               <button
                 type="button"
-                className="rounded-xl border border-neutral-200 bg-neutral-100 px-5 py-2 text-sm font-semibold text-neutral-950 hover:bg-white"
+                className="rounded-xl bg-neutral-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
                 onClick={() => console.log("Submit", data)}
               >
                 Finish
@@ -326,7 +305,7 @@ function StepBasics({
     <div className="grid grid-cols-1 gap-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Company name
           </label>
           <input
@@ -334,19 +313,19 @@ function StepBasics({
             value={data.companyName}
             onChange={setField("companyName")}
             placeholder="Acme Inc."
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-red-200"
           />
         </div>
 
         {/* Scope + Department */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Scope
           </label>
           <select
             value={data.scope}
             onChange={setField("scope")}
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200"
           >
             <option>Company-wide</option>
             <option>Specific department</option>
@@ -354,14 +333,14 @@ function StepBasics({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             {data.scope === "Company-wide" ? "Department (optional)" : "Department"}
           </label>
           <select
             value={data.department}
             onChange={setField("department")}
             disabled={data.scope === "Company-wide"}
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none disabled:bg-neutral-900 disabled:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none disabled:bg-neutral-100 disabled:text-neutral-500 focus:ring-2 focus:ring-red-200"
           >
             <option value="">{data.scope === "Company-wide" ? "—" : "Select department"}</option>
             {DEPARTMENTS.map((d) => (
@@ -374,7 +353,7 @@ function StepBasics({
 
         {/* Headcount, Adoption, Salary */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Employees (in scope)
           </label>
           <input
@@ -383,12 +362,12 @@ function StepBasics({
             value={data.employees}
             onChange={setField("employees")}
             placeholder="250"
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Adoption (% of employees)
           </label>
           <input
@@ -398,12 +377,12 @@ function StepBasics({
             value={data.adoptionRatePct}
             onChange={setField("adoptionRatePct")}
             placeholder="35"
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Average salary (annual, local currency)
           </label>
           <input
@@ -412,7 +391,7 @@ function StepBasics({
             value={data.averageSalary}
             onChange={setField("averageSalary")}
             placeholder="75000"
-            className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-200"
           />
         </div>
       </div>
@@ -429,9 +408,11 @@ function StepPriorities({
   togglePriority: (p: PriorityKey) => void;
 }) {
   const selected = new Set(data.priorities);
+  const remaining = Math.max(0, 3 - selected.size);
+
   return (
     <div className="space-y-3">
-      <p className="text-sm text-neutral-300">Select up to 3 priorities.</p>
+      <p className="text-sm text-neutral-700">Select up to 3 priorities.</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {PRIORITIES.map(({ key, blurb }) => {
           const active = selected.has(key);
@@ -443,16 +424,16 @@ function StepPriorities({
               className={[
                 "rounded-xl border p-3 text-left transition",
                 active
-                  ? "border-neutral-300 bg-neutral-200 text-neutral-900"
-                  : "border-neutral-800 bg-neutral-900 text-neutral-200 hover:bg-neutral-900/80",
+                  ? "border-red-600 bg-red-50 text-red-800"
+                  : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50",
               ].join(" ")}
             >
               <div className="text-sm font-semibold">{key}</div>
-              <div className={active ? "mt-1 text-xs text-neutral-700" : "mt-1 text-xs text-neutral-400"}>
+              <div className={active ? "mt-1 text-xs text-red-700" : "mt-1 text-xs text-neutral-500"}>
                 {blurb}
               </div>
               <div className="mt-2 text-[11px]">
-                {active ? "Selected" : `${3 - selected.size} remaining`}
+                {active ? "Selected" : `${remaining} remaining`}
               </div>
             </button>
           );
@@ -476,7 +457,7 @@ function StepAIMaturity({
     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
       {/* Left: slider + per-person input */}
       <div className="md:col-span-2">
-        <label className="mb-1 block text-sm font-medium text-neutral-300">
+        <label className="mb-1 block text-sm font-medium text-neutral-700">
           AI maturity (1–10)
         </label>
         <input
@@ -486,9 +467,9 @@ function StepAIMaturity({
           step={1}
           value={data.aiMaturity}
           onChange={setField("aiMaturity")}
-          className="w-full accent-neutral-200"
+          className="w-full accent-red-600"
         />
-        <div className="mt-1 flex justify-between text-[11px] text-neutral-400">
+        <div className="mt-1 flex justify-between text-[11px] text-neutral-500">
           <span>1 • Ad-hoc</span>
           <span>3</span>
           <span>5 • Emerging</span>
@@ -498,7 +479,7 @@ function StepAIMaturity({
 
         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-300">
+            <label className="mb-1 block text-sm font-medium text-neutral-700">
               Hours saved / person / week
             </label>
             <input
@@ -507,7 +488,7 @@ function StepAIMaturity({
               value={data.hoursSavedPerWeek}
               onChange={setField("hoursSavedPerWeek")}
               placeholder="1.0"
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-neutral-100 outline-none placeholder:text-neutral-500 focus:ring-2 focus:ring-neutral-700"
+              className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-red-200"
             />
           </div>
         </div>
@@ -515,17 +496,17 @@ function StepAIMaturity({
 
       {/* Right: KPI cards */}
       <div className="space-y-3">
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-          <div className="text-xs text-neutral-400">Hours saved</div>
-          <div className="mt-1 text-sm font-semibold text-neutral-100">Per person (weekly)</div>
-          <div className="mt-2 text-2xl font-bold text-neutral-100">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="text-xs text-neutral-500">Hours saved</div>
+          <div className="mt-1 text-sm font-semibold text-neutral-900">Per person (weekly)</div>
+          <div className="mt-2 text-2xl font-bold text-neutral-900">
             {Number(data.hoursSavedPerWeek || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-          <div className="text-xs text-neutral-400">Hours saved</div>
-          <div className="mt-1 text-sm font-semibold text-neutral-100">Per team (weekly)</div>
-          <div className="mt-2 text-2xl font-bold text-neutral-100">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="text-xs text-neutral-500">Hours saved</div>
+          <div className="mt-1 text-sm font-semibold text-neutral-900">Per team (weekly)</div>
+          <div className="mt-2 text-2xl font-bold text-neutral-900">
             {hoursSavedPerTeamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
@@ -548,8 +529,8 @@ function StepPriorityDetail({
 }) {
   if (!priority) {
     return (
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-5">
-        <div className="text-sm text-neutral-300">
+      <div className="rounded-xl border border-neutral-200 bg-white p-5">
+        <div className="text-sm text-neutral-600">
           Select priorities on Step 2 to configure this section.
         </div>
       </div>
@@ -558,13 +539,13 @@ function StepPriorityDetail({
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-semibold text-neutral-100">{title}</h3>
-        <p className="text-sm text-neutral-400">{priority}</p>
+        <h3 className="text-base font-semibold">{title}</h3>
+        <p className="text-sm text-neutral-600">{priority}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-sm font-medium text-neutral-300">
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
             Impact weighting (%) for "{priority}"
           </label>
           <input
@@ -574,17 +555,17 @@ function StepPriorityDetail({
             step={1}
             value={impact}
             onChange={(e) => setImpact(Number(e.target.value))}
-            className="w-full accent-neutral-200"
+            className="w-full accent-red-600"
           />
-          <div className="mt-1 text-sm text-neutral-100">{impact}%</div>
-          <p className="mt-1 text-xs text-neutral-400">
+          <div className="mt-1 text-sm">{impact}%</div>
+          <p className="mt-1 text-xs text-neutral-500">
             Use this to emphasise which outcomes matter most in your business case.
           </p>
         </div>
 
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-          <div className="text-xs text-neutral-400">Tip</div>
-          <div className="mt-1 text-sm text-neutral-100">
+        <div className="rounded-xl border border-neutral-200 bg-white p-4">
+          <div className="text-xs text-neutral-500">Tip</div>
+          <div className="mt-1 text-sm">
             Tie “{priority}” to concrete metrics (e.g., cycle time, CSAT/NPS, error rate, attrition).
           </div>
         </div>
@@ -593,22 +574,47 @@ function StepPriorityDetail({
   );
 }
 
-/* -------------------- Step 7: Summary inputs -------------------- */
-function StepSummaryInputs({ data }: { data: FormData }) {
+/* -------------------- Step 7: Summary (with centered “Hours Saved”) -------------------- */
+function StepSummaryInputs({
+  data,
+  hoursSavedPerTeamWeekly,
+}: {
+  data: FormData;
+  hoursSavedPerTeamWeekly: number;
+}) {
   return (
-    <div className="space-y-4">
-      <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
-        <h3 className="text-base font-semibold text-neutral-100">Overview</h3>
+    <div className="space-y-6">
+      {/* Overview */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <h3 className="text-base font-semibold">Overview</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-          <div><span className="text-neutral-400">Scope:</span> {data.scope}</div>
-          <div><span className="text-neutral-400">Department:</span> {data.scope === "Company-wide" ? "—" : (data.department || "—")}</div>
-          <div><span className="text-neutral-400">Company:</span> {data.companyName || "—"}</div>
-          <div><span className="text-neutral-400">Employees (in scope):</span> {data.employees || "—"}</div>
-          <div><span className="text-neutral-400">Adoption %:</span> {data.adoptionRatePct || "—"}</div>
-          <div><span className="text-neutral-400">Average salary:</span> {data.averageSalary || "—"}</div>
-          <div><span className="text-neutral-400">AI maturity:</span> {data.aiMaturity || "—"}</div>
-          <div><span className="text-neutral-400">Hours saved/person (weekly):</span> {data.hoursSavedPerWeek || "—"}</div>
-          <div className="md:col-span-2"><span className="text-neutral-400">Priorities:</span> {data.priorities.length ? data.priorities.join(", ") : "—"}</div>
+          <div><span className="text-neutral-500">Scope:</span> {data.scope}</div>
+          <div><span className="text-neutral-500">Department:</span> {data.scope === "Company-wide" ? "—" : (data.department || "—")}</div>
+          <div><span className="text-neutral-500">Company:</span> {data.companyName || "—"}</div>
+          <div><span className="text-neutral-500">Employees (in scope):</span> {data.employees || "—"}</div>
+          <div><span className="text-neutral-500">Adoption %:</span> {data.adoptionRatePct || "—"}</div>
+          <div><span className="text-neutral-500">Average salary:</span> {data.averageSalary || "—"}</div>
+          <div className="md:col-span-2">
+            <span className="text-neutral-500">Priorities:</span> {data.priorities.length ? data.priorities.join(", ") : "—"}
+          </div>
+        </div>
+      </div>
+
+      {/* Centered Hours Saved block (this is the bit you flagged before) */}
+      <div className="mx-auto w-full max-w-md">
+        <div className="rounded-xl border border-neutral-200 bg-white p-5 text-center">
+          <div className="text-xs text-neutral-500">Hours saved (weekly)</div>
+          <div className="mt-1 text-sm font-semibold text-neutral-900">Per person / Per team</div>
+          <div className="mt-3 flex items-center justify-center gap-8">
+            <div className="text-2xl font-bold text-neutral-900">
+              {Number(data.hoursSavedPerWeek || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <div className="mt-1 text-xs font-normal text-neutral-500">Per person</div>
+            </div>
+            <div className="text-2xl font-bold text-neutral-900">
+              {hoursSavedPerTeamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              <div className="mt-1 text-xs font-normal text-neutral-500">Per team</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -618,12 +624,12 @@ function StepSummaryInputs({ data }: { data: FormData }) {
 /* -------------------- Step 8: ROI -------------------- */
 function StepROI({ estimatedAnnualSavings }: { estimatedAnnualSavings: number }) {
   return (
-    <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-      <h3 className="text-base font-semibold text-neutral-100">Estimated Impact</h3>
-      <p className="mt-2 text-3xl font-bold text-neutral-100">
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <h3 className="text-base font-semibold">Estimated Impact</h3>
+      <p className="mt-2 text-3xl font-bold">
         {estimatedAnnualSavings.toLocaleString()}
       </p>
-      <p className="text-sm text-neutral-400">
+      <p className="text-sm text-neutral-600">
         Estimated annual time-savings value (simple model).
       </p>
     </div>
