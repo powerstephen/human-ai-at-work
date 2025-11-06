@@ -29,3 +29,19 @@ section[style*="linear-gradient"],
 header[style*="linear-gradient"] {
   display: none !important;
 }
+/* --- FOOLPROOF KILL SWITCH FOR OLD BLUE HERO --- */
+/* Hide ONLY big, top-level gradient blocks that could sit above the hero image */
+main > div[style*="linear-gradient"],
+main > section[style*="linear-gradient"],
+main > header[style*="linear-gradient"] {
+  display: none !important;
+}
+
+/* Also neutralize any full-bleed gradient backgrounds if they slipped in */
+main > div[style*="background: linear-gradient"],
+main > section[style*="background: linear-gradient"],
+main > header[style*="background: linear-gradient"] {
+  display: none !important;
+}
+
+/* Keep the rest of the UI visible (progress bar uses a gradient on a SPAN, not matched here) */
