@@ -292,9 +292,9 @@ function Calculator(){
           <div style={{ marginTop:14 }}>
             <h4 style={{ margin:'0 0 8px', fontSize:'.95rem', fontWeight:900 }}>Program cost assumptions</h4>
             <div style={gridAuto}>
-              <FieldNumber label={`Average annual salary (${symbol(currency)})`} value={avgSalary} onChange={setAvgSalary} step={1000}/>
-              <FieldNumber label={`Training per employee (${symbol(currency)})`} value={trainingPerEmployee} onChange={setTrainingPerEmployee} step={25}/>
-              <FieldNumber label="Program duration (months)" value={durationMonths} onChange={setDurationMonths} min={1} step={1}/>
+              <FieldNum label={`Average annual salary (${symbol(currency)})`} value={avgSalary} onChange={setAvgSalary} step={1000}/>
+              <FieldNum label={`Training per employee (${symbol(currency)})`} value={trainingPerEmployee} onChange={setTrainingPerEmployee} step={25}/>
+              <FieldNum label="Program duration (months)" value={durationMonths} onChange={setDurationMonths} min={1} step={1}/>
             </div>
           </div>
 
@@ -664,9 +664,9 @@ function buildBreakdownRows(args: {
 }
 
 /* ============================================================
-   Reusable inputs
+   Reusable number field (renamed to avoid stale types)
 ============================================================ */
-function FieldNumber({
+function FieldNum({
   label, value, onChange, min, max, step = 1
 }: {
   label:string; value:number; onChange:(v:number)=>void; min?:number; max?:number; step?:number;
@@ -732,8 +732,8 @@ function GoalStep(props: {
         <h3 style={h3}>Throughput</h3>
         <p style={help}>Estimate cycle-time gains from AI-augmented workflows.</p>
         <div style={gridAuto}>
-          <FieldNumber label="Hours saved per person / week" value={props.tpHoursPerWeek} onChange={props.setTpHoursPerWeek} step={0.5}/>
-          <FieldNumber label="Utilization factor (%)" value={props.tpUtilPct} onChange={props.setTpUtilPct} min={0} max={100} step={5}/>
+          <FieldNum label="Hours saved per person / week" value={props.tpHoursPerWeek} onChange={props.setTpHoursPerWeek} step={0.5}/>
+          <FieldNum label="Utilization factor (%)" value={props.tpUtilPct} onChange={props.setTpUtilPct} min={0} max={100} step={5}/>
         </div>
         <p style={{ ...help, marginTop:10 }}>
           ≈ Value / year: <strong>{fmtMoney(value, currency)}</strong>
@@ -754,9 +754,9 @@ function GoalStep(props: {
         <h3 style={h3}>Quality / Rework</h3>
         <p style={help}>Fewer rework cycles; better first-pass quality.</p>
         <div style={gridAuto}>
-          <FieldNumber label="Rework events / person / month" value={props.qlEventsPerPersonPerMonth} onChange={props.setQlEventsPerPersonPerMonth} step={1}/>
-          <FieldNumber label="Expected reduction (%)" value={props.qlReductionPct} onChange={props.setQlReductionPct} min={0} max={100} step={1}/>
-          <FieldNumber label="Hours per fix" value={props.qlHoursPerFix} onChange={props.setQlHoursPerFix} step={0.5}/>
+          <FieldNum label="Rework events / person / month" value={props.qlEventsPerPersonPerMonth} onChange={props.setQlEventsPerPersonPerMonth} step={1}/>
+          <FieldNum label="Expected reduction (%)" value={props.qlReductionPct} onChange={props.setQlReductionPct} min={0} max={100} step={1}/>
+          <FieldNum label="Hours per fix" value={props.qlHoursPerFix} onChange={props.setQlHoursPerFix} step={0.5}/>
         </div>
         <p style={{ ...help, marginTop:10 }}>
           ≈ Hours avoided / year: <strong>{Math.round(hours).toLocaleString()}</strong> · Value / year: <strong>{fmtMoney(value, currency)}</strong>
@@ -776,9 +776,9 @@ function GoalStep(props: {
         <h3 style={h3}>Onboarding speed</h3>
         <p style={help}>Faster ramp from AI playbooks & guided practice.</p>
         <div style={gridAuto}>
-          <FieldNumber label="New hires / year" value={props.obHiresPerYear} onChange={props.setObHiresPerYear} step={1}/>
-          <FieldNumber label="Baseline ramp (months)" value={props.obBaselineRamp} onChange={props.setObBaselineRamp} step={0.5}/>
-          <FieldNumber label="Improved ramp (months)" value={props.obImprovedRamp} onChange={props.setObImprovedRamp} step={0.5}/>
+          <FieldNum label="New hires / year" value={props.obHiresPerYear} onChange={props.setObHiresPerYear} step={1}/>
+          <FieldNum label="Baseline ramp (months)" value={props.obBaselineRamp} onChange={props.setObBaselineRamp} step={0.5}/>
+          <FieldNum label="Improved ramp (months)" value={props.obImprovedRamp} onChange={props.setObImprovedRamp} step={0.5}/>
         </div>
         <p style={{ ...help, marginTop:10 }}>
           ≈ Months saved / hire: <strong>{monthsSaved.toFixed(1)}</strong>
@@ -797,9 +797,9 @@ function GoalStep(props: {
         <h3 style={h3}>Retention</h3>
         <p style={help}>Keep skilled talent; avoid replacement costs.</p>
         <div style={gridAuto}>
-          <FieldNumber label="Baseline annual turnover (%)" value={props.rtBaselineTurnoverPct} onChange={props.setRtBaselineTurnoverPct} min={0} max={100} step={1}/>
-          <FieldNumber label="Expected reduction (%)" value={props.rtReductionPct} onChange={props.setRtReductionPct} min={0} max={100} step={1}/>
-          <FieldNumber label="Replacement cost (% of salary)" value={props.rtReplacementCostPct} onChange={props.setRtReplacementCostPct} min={0} max={200} step={5}/>
+          <FieldNum label="Baseline annual turnover (%)" value={props.rtBaselineTurnoverPct} onChange={props.setRtBaselineTurnoverPct} min={0} max={100} step={1}/>
+          <FieldNum label="Expected reduction (%)" value={props.rtReductionPct} onChange={props.setRtReductionPct} min={0} max={100} step={1}/>
+          <FieldNum label="Replacement cost (% of salary)" value={props.rtReplacementCostPct} onChange={props.setRtReplacementCostPct} min={0} max={200} step={5}/>
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:12 }}>
           <button style={btn} onClick={onBack}>← Back</button>
@@ -815,9 +815,9 @@ function GoalStep(props: {
         <h3 style={h3}>Cost</h3>
         <p style={help}>Do more with fewer overlapping tools.</p>
         <div style={gridAuto}>
-          <FieldNumber label={`Consolidation savings / month (${symbol(currency)})`} value={props.csConsolidationPerMonth} onChange={props.setCsConsolidationPerMonth} step={50}/>
-          <FieldNumber label="Eliminated tools (count)" value={props.csEliminatedTools} onChange={props.setCsEliminatedTools} step={1}/>
-          <FieldNumber label={`Avg tool cost / month (${symbol(currency)})`} value={props.csAvgToolCostPerMonth} onChange={props.setCsAvgToolCostPerMonth} step={20}/>
+          <FieldNum label={`Consolidation savings / month (${symbol(currency)})`} value={props.csConsolidationPerMonth} onChange={props.setCsConsolidationPerMonth} step={50}/>
+          <FieldNum label="Eliminated tools (count)" value={props.csEliminatedTools} onChange={props.setCsEliminatedTools} step={1}/>
+          <FieldNum label={`Avg tool cost / month (${symbol(currency)})`} value={props.csAvgToolCostPerMonth} onChange={props.setCsAvgToolCostPerMonth} step={20}/>
         </div>
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:12 }}>
           <button style={btn} onClick={onBack}>← Back</button>
@@ -834,9 +834,9 @@ function GoalStep(props: {
       <h3 style={h3}>Upskilling</h3>
       <p style={help}>Competency coverage after training drives steady time savings per competent employee.</p>
       <div style={gridAuto}>
-        <FieldNumber label="Competency coverage after program (%)" value={props.upCoveragePct} onChange={props.setUpCoveragePct} min={0} max={100} step={5}/>
-        <FieldNumber label="Hours saved per competent person / week" value={props.upHoursPerWeek} onChange={props.setUpHoursPerWeek} step={0.5}/>
-        <FieldNumber label="Utilization factor (%)" value={props.upUtilPct} onChange={props.setUpUtilPct} min={0} max={100} step={5}/>
+        <FieldNum label="Competency coverage after program (%)" value={props.upCoveragePct} onChange={props.setUpCoveragePct} min={0} max={100} step={5}/>
+        <FieldNum label="Hours saved per competent person / week" value={props.upHoursPerWeek} onChange={props.setUpHoursPerWeek} step={0.5}/>
+        <FieldNum label="Utilization factor (%)" value={props.upUtilPct} onChange={props.setUpUtilPct} min={0} max={100} step={5}/>
       </div>
       <p style={{ ...help, marginTop:10 }}>
         ≈ Hours / year (before overlap): <strong>{Math.round(baseHours).toLocaleString()}</strong>
