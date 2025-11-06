@@ -39,8 +39,8 @@ const CURRENCY_ICON: Record<Currency,string> = {
 const symbol = (c: Currency) => (
   c === 'EUR' ? '€' :
   c === 'USD' ? '$' :
-  c === 'GBP' ? '£' :
-  'A$'
+  c === 'GBP' ? '£'  :
+  'A$' // AUD
 );
 
 const fmtMoney = (n:number, c:Currency) =>
@@ -213,10 +213,10 @@ function Calculator(){
   ============================================================ */
   const container = { maxWidth: 1120, margin:'0 auto', padding:'24px 20px 32px', fontFamily:'Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial', boxSizing:'border-box', color:'#0E1320' } as const;
 
-  // HERO image (image only — no title or subheading). Match card outer width.
+  // HERO image (image only — no title or subheading). Match card outer width (980 + 2px border).
   const heroImgWrap = {
     width:'100%',
-    maxWidth:982,            // 980 card + 2px border
+    maxWidth:982,
     margin:'0 auto 16px',
     position:'relative',
     zIndex:2
@@ -244,7 +244,7 @@ function Calculator(){
   const help = { fontSize:'.86rem', color:'#667085' } as const;
 
   const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800, border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
-  const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const;
+  const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const; // white text on blue
   const chip = (active:boolean)=>({
     display:'inline-flex', alignItems:'center', gap:8, padding:'8px 10px',
     borderRadius:999, border:`1px solid ${active?'transparent':'#E7ECF7'}`,
@@ -283,9 +283,9 @@ function Calculator(){
               <div key={s.key} style={{ display:'flex', alignItems:'center', gap:6, minWidth:0, opacity:i<=step?1:.55 }}>
                 <div style={{
                   width:26, height:26, borderRadius:999,
-                  border: 'none',
-                  background: BLUE,     // blue circle always
-                  color: '#fff',        // white number
+                  border:'none',
+                  background: BLUE,   // always blue
+                  color:'#fff',       // white number
                   display:'flex', alignItems:'center', justifyContent:'center',
                   fontWeight:900, fontSize:12, flex:'0 0 auto'
                 }}>{i+1}</div>
@@ -483,7 +483,7 @@ function Calculator(){
         />
       )}
 
-      {/* RESULTS */}
+      {/* RESULTS (with headers & spaced columns) */}
       {steps[step]?.key==='results' && (
         <section style={card}>
           <h3 style={h3}>Results</h3>
@@ -554,7 +554,7 @@ function KPI({ label, value }:{label:string; value:string}){
   );
 }
 
-/** Table-like breakdown with headers */
+/** Table-like layout with headers */
 function PrioritiesTable({
   currency,
   rows
