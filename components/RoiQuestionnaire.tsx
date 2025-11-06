@@ -4,8 +4,8 @@
 import { useMemo, useState } from "react";
 
 /* -------------------- Helpers -------------------- */
-const num = (v: unknown, fb = 0) =>
-  Number.isFinite(Number(v)) ? Number(v) : fb;
+const n = (v: unknown, fb = 0) => (Number.isFinite(Number(v)) ? Number(v) : fb);
+const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
 /* -------------------- Types & constants -------------------- */
 type PriorityKey =
@@ -26,7 +26,6 @@ const PRIORITIES: Array<{ key: PriorityKey; blurb: string }> = [
 ];
 
 type DepartmentScope = "Company-wide" | "Specific department";
-
 const DEPARTMENTS = [
   "Sales","Marketing","Customer Support","HR","Finance","Engineering","Operations","Product","Other",
 ];
@@ -45,11 +44,10 @@ type FormData = {
   // Step 2 — Priorities (up to 3)
   priorities: PriorityKey[];
 
-  // Step 3 — AI Maturity + base per-person hours
-  aiMaturity: number | "";      // 1–10
-  hoursSavedBase: number | "";  // base hours saved per person per week
+  // Step 3 — AI maturity (1–10), no base-hours input
+  aiMaturity: number | "";
 
-  // Steps 4–6 — per selected priority (TWO inputs; no sliders)
+  // Steps 4–6 — per selected priority (two numeric inputs)
   priorityInputs: Record<PriorityKey, PriorityInputs>;
 };
 
@@ -62,7 +60,6 @@ const initialData: FormData = {
   averageSalary: "",
   priorities: [],
   aiMaturity: 5,
-  hoursSavedBase: 1,
   priorityInputs: {
     "Productivity / Throughput": { coveragePct: 50, improvementPct: 10 },
     Upskilling: { coveragePct: 30, improvementPct: 10 },
@@ -74,14 +71,7 @@ const initialData: FormData = {
 };
 
 const STEPS = [
-  "Basics",
-  "Priorities",
-  "AI Maturity",
-  "Priority #1",
-  "Priority #2",
-  "Priority #3",
-  "Summary",
-  "ROI",
+  "Basics", "Priorities", "AI Maturity", "Priority #1", "Priority #2", "Priority #3", "Summary", "ROI",
 ];
 
 /* -------------------- Component -------------------- */
@@ -103,8 +93,7 @@ export default function RoiQuestionnaire() {
         key === "employees" ||
         key === "adoptionRatePct" ||
         key === "averageSalary" ||
-        key === "aiMaturity" ||
-        key === "hoursSavedBase"
+        key === "aiMaturity"
       ) {
         setData((d) => ({ ...d, [key]: value === "" ? "" : Number(value) }));
       } else {
@@ -134,42 +123,64 @@ export default function RoiQuestionnaire() {
       ...d,
       priorityInputs: {
         ...d.priorityInputs,
-        [p]: { ...d.priorityInputs[p], [field]: num(value, 0) },
+        [p]: {
+          ...d.priorityInputs[p],
+          [field]: clamp(n(value, 0), 0, 100),
+        },
       },
     }));
   };
 
-  // Map steps 4–6 to selected priorities (pad to 3)
+  // Map steps 4–6 to selected priorities (pad to 3 for consistent stepper)
   const chosen = [...data.priorities];
   while (chosen.length < 3) chosen.push(undefined as unknown as PriorityKey);
   const [p1, p2, p3] = chosen;
 
   /* -------------------- Calculations -------------------- */
-  const baseHrs = num(data.hoursSavedBase, 0);
+  const WEEKLY_BASE_HOURS = 40; // baseline weekly working hours per person
+  const maturity = n(data.aiMaturity, 5);
+  // Scale impact by AI maturity (gentle linear: 0.7x at 1 -> 1.3x at 10)
+  const maturityFactor = 0.7 + ((clamp(maturity, 1, 10) - 1) * (1.3 - 0.7)) / 9;
 
-  // Priority factor = Σ(coverage% * improvement%) / 10000 over selected priorities
-  const priorityFactor = (data.priorities || []).reduce((acc, p) => {
+  // Combined improvement factor from selected priorities
+  const combinedImprovement = (data.priorities || []).reduce((acc, p) => {
     const inp = data.priorityInputs[p];
     if (!inp) return acc;
-    const cov = Math.min(100, Math.max(0, num(inp.coveragePct)));
-    const imp = Math.min(100, Math.max(0, num(inp.improvementPct)));
-    return acc + (cov * imp) / 10000;
+    const cov = clamp(n(inp.coveragePct), 0, 100);
+    const imp = clamp(n(inp.improvementPct), 0, 100);
+    return acc + (cov * imp) / 10000; // e.g., 50% * 10% => 0.05
   }, 0);
 
-  // Total per-person weekly hours saved = base + (base * priorityFactor)
-  const perPersonWeekly = Math.max(0, baseHrs + baseHrs * priorityFactor);
+  // Per-person hours saved weekly (no manual "base hours" — derived)
+  const perPersonWeekly = Math.max(
+    0,
+    WEEKLY_BASE_HOURS * combinedImprovement * maturityFactor
+  );
 
-  // Per-team weekly = per-person * employees * adoption%
-  const employees = num(data.employees, 0);
-  const adoption = Math.min(1, Math.max(0, num(data.adoptionRatePct, 0) / 100));
+  const employees = n(data.employees, 0);
+  const adoption = clamp(n(data.adoptionRatePct, 0) / 100, 0, 1);
   const teamWeekly = Math.max(0, perPersonWeekly * employees * adoption);
 
-  // Hourly rate from salary
-  const avgSalary = num(data.averageSalary, 0);
-  const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0;
-
-  // Annual savings = teamWeekly * 52 * hourlyRate
+  const avgSalary = n(data.averageSalary, 0);
+  const hourlyRate = avgSalary > 0 ? avgSalary / 2080 : 0; // 2080 hrs/yr
   const annualSavings = Math.round(teamWeekly * 52 * Math.max(0, hourlyRate));
+
+  // Per-priority breakdown (hours & money) — weekly
+  const perPriority = (data.priorities || []).map((p) => {
+    const inp = data.priorityInputs[p];
+    const cov = clamp(n(inp?.coveragePct), 0, 100);
+    const imp = clamp(n(inp?.improvementPct), 0, 100);
+    const factor = (cov * imp) / 10000;
+    const perPersonHrs = WEEKLY_BASE_HOURS * factor * maturityFactor;
+    const teamHrs = perPersonHrs * employees * adoption;
+    const money = teamHrs * hourlyRate;
+    return {
+      key: p,
+      perPersonHrs,
+      teamHrs,
+      moneyWeekly: money,
+    };
+  });
 
   /* -------------------- UI -------------------- */
   return (
@@ -181,10 +192,7 @@ export default function RoiQuestionnaire() {
           <span>{progress}%</span>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
-          <div
-            className="h-2 rounded-full bg-blue-600 transition-all"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
         </div>
         <ol className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] text-neutral-600 sm:grid-cols-8">
           {STEPS.map((label, i) => {
@@ -217,8 +225,6 @@ export default function RoiQuestionnaire() {
           <StepAIMaturity
             data={data}
             setField={setField}
-            perPersonWeekly={perPersonWeekly}
-            teamWeekly={teamWeekly}
           />
         )}
         {step === 3 && (
@@ -252,6 +258,7 @@ export default function RoiQuestionnaire() {
             teamWeekly={teamWeekly}
             hourlyRate={hourlyRate}
             annualSavings={annualSavings}
+            perPriority={perPriority}
           />
         )}
         {step === 7 && <StepROI annualSavings={annualSavings} />}
@@ -429,24 +436,18 @@ function StepPriorities({
   );
 }
 
-/* ---------- Step 3: AI Maturity (1–10) + KPIs ---------- */
+/* ---------- Step 3: AI Maturity (1–10) with explanation under slider ---------- */
 function StepAIMaturity({
   data,
   setField,
-  perPersonWeekly,
-  teamWeekly,
 }: {
   data: FormData;
   setField: (key: keyof FormData) => (e: any) => void;
-  perPersonWeekly: number;
-  teamWeekly: number;
 }) {
   const ticks = Array.from({ length: 10 }, (_, i) => i + 1);
-
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-      {/* Left: slider + base hours */}
-      <div className="md:col-span-2">
+    <div className="space-y-4">
+      <div>
         <label className="mb-1 block text-sm font-medium text-neutral-700">AI maturity (1–10)</label>
         <input
           type="range"
@@ -457,52 +458,19 @@ function StepAIMaturity({
           onChange={setField("aiMaturity")}
           className="w-full accent-blue-600"
         />
-        {/* All numbers under the slider */}
         <div className="mt-1 grid grid-cols-10 text-center text-[11px] text-neutral-500">
-          {ticks.map((t) => (
-            <span key={t}>{t}</span>
-          ))}
+          {ticks.map((t) => <span key={t}>{t}</span>)}
         </div>
-
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-neutral-700">
-              Base hours saved / person / week
-            </label>
-            <input
-              type="number"
-              min={0}
-              value={data.hoursSavedBase}
-              onChange={setField("hoursSavedBase")}
-              placeholder="1.0"
-              className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-neutral-400 focus:ring-2 focus:ring-blue-200"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Right: KPI cards */}
-      <div className="space-y-3">
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
-          <div className="text-xs text-neutral-500">Hours saved</div>
-          <div className="mt-1 text-sm font-semibold text-neutral-900">Per person (weekly)</div>
-          <div className="mt-2 text-2xl font-bold text-neutral-900">
-            {perPersonWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </div>
-        </div>
-        <div className="rounded-xl border border-neutral-200 bg-white p-4">
-          <div className="text-xs text-neutral-500">Hours saved</div>
-          <div className="mt-1 text-sm font-semibold text-neutral-900">Per team (weekly)</div>
-          <div className="mt-2 text-2xl font-bold text-neutral-900">
-            {teamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </div>
+        <div className="mt-2 text-xs text-neutral-500">
+          <span className="font-medium text-neutral-700">Guide:&nbsp;</span>
+          1 = Ad-hoc · 3 = Experimenting · 5 = Emerging · 7 = Operational · 10 = Scaled
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Steps 4–6: TWO INPUTS per selected priority ---------- */
+/* ---------- Steps 4–6: two inputs per selected priority ---------- */
 function StepPriorityDetail({
   title,
   priority,
@@ -517,13 +485,10 @@ function StepPriorityDetail({
   if (!priority) {
     return (
       <div className="rounded-xl border border-neutral-200 bg-white p-5">
-        <div className="text-sm text-neutral-600">
-          Select priorities on Step 2 to configure this section.
-        </div>
+        <div className="text-sm text-neutral-600">Select priorities on Step 2 to configure this section.</div>
       </div>
     );
   }
-
   return (
     <div className="space-y-5">
       <div>
@@ -544,9 +509,7 @@ function StepPriorityDetail({
             onChange={(e) => onChange("coveragePct", Number(e.target.value))}
             className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
           />
-          <p className="mt-1 text-xs text-neutral-500">
-            What % of weekly work touches this priority?
-          </p>
+          <p className="mt-1 text-xs text-neutral-500">What % of weekly work touches this priority?</p>
         </div>
 
         <div>
@@ -561,32 +524,37 @@ function StepPriorityDetail({
             onChange={(e) => onChange("improvementPct", Number(e.target.value))}
             className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
           />
-          <p className="mt-1 text-xs text-neutral-500">
-            Efficiency/quality lift within the covered portion.
-          </p>
+          <p className="mt-1 text-xs text-neutral-500">Efficiency/quality lift within the covered portion.</p>
         </div>
       </div>
     </div>
   );
 }
 
-/* ---------- Step 7: Summary (Hours vs Money layout you asked for) ---------- */
+/* ---------- Step 7: Summary — 4 tiles + priority breakdown ---------- */
 function StepSummary({
   data,
   perPersonWeekly,
   teamWeekly,
   hourlyRate,
   annualSavings,
+  perPriority,
 }: {
   data: FormData;
   perPersonWeekly: number;
   teamWeekly: number;
   hourlyRate: number;
   annualSavings: number;
+  perPriority: Array<{
+    key: PriorityKey;
+    perPersonHrs: number;
+    teamHrs: number;
+    moneyWeekly: number;
+  }>;
 }) {
   return (
     <div className="space-y-6">
-      {/* Overview */}
+      {/* Overview (basic context) */}
       <div className="rounded-xl border border-neutral-200 bg-white p-4">
         <h3 className="text-base font-semibold">Overview</h3>
         <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
@@ -596,66 +564,75 @@ function StepSummary({
           <div><span className="text-neutral-500">Employees (in scope):</span> {data.employees || "—"}</div>
           <div><span className="text-neutral-500">Adoption %:</span> {data.adoptionRatePct || "—"}</div>
           <div className="text-right"><span className="text-neutral-500">Average salary:</span> {data.averageSalary || "—"}</div>
-          <div className="md:col-span-2">
-            <span className="text-neutral-500">Priorities:</span>{" "}
-            {data.priorities.length ? data.priorities.join(", ") : "—"}
-          </div>
         </div>
       </div>
 
-      {/* Split section with HEADINGS and spacing so Hours isn't cramped */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {/* Hours saved (centered card) */}
-        <div className="mx-auto w-full max-w-md">
-          <div className="rounded-xl border border-neutral-200 bg-white p-5 text-center">
-            <h4 className="text-sm font-semibold text-neutral-900">Hours saved</h4>
-            <div className="mt-3 flex items-center justify-center gap-8">
-              <div className="text-2xl font-bold text-neutral-900">
-                {perPersonWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                <div className="mt-1 text-xs font-normal text-neutral-500">Per person / week</div>
-              </div>
-              <div className="text-2xl font-bold text-neutral-900">
-                {teamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                <div className="mt-1 text-xs font-normal text-neutral-500">Per team / week</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* FOUR TILES (top row) */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <Tile label="Per-person hours / week" value={perPersonWeekly} format="hours" />
+        <Tile label="Per-team hours / week" value={teamWeekly} format="hours" />
+        <Tile label="Hourly rate basis" value={hourlyRate} format="money" />
+        <Tile label="Annual savings (est.)" value={annualSavings} format="money0" strong />
+      </div>
 
-        {/* Money saved (right-aligned values) */}
-        <div>
-          <div className="rounded-xl border border-neutral-200 bg-white p-5">
-            <h4 className="text-sm font-semibold text-neutral-900">Money saved</h4>
-            <div className="mt-3 grid grid-cols-1 gap-3 text-sm">
-              <div className="text-right">
-                <span className="text-neutral-500">Hourly rate basis:</span>{" "}
-                <span className="font-semibold">
-                  {hourlyRate > 0
-                    ? hourlyRate.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                    : "—"}
-                </span>
+      {/* Priority breakdown (underneath) */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <h3 className="text-base font-semibold">Priority breakdown</h3>
+        {perPriority.length === 0 ? (
+          <p className="mt-2 text-sm text-neutral-600">No priorities selected.</p>
+        ) : (
+          <div className="mt-3 grid grid-cols-1 gap-3">
+            {perPriority.map((p) => (
+              <div key={p.key} className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div className="text-sm font-semibold text-neutral-900">{p.key}</div>
+                  <div className="grid grid-cols-2 gap-3 sm:w-2/3">
+                    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-center">
+                      <div className="text-xs text-neutral-500">Hours saved (weekly)</div>
+                      <div className="mt-1 text-lg font-bold">
+                        {p.teamHrs.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </div>
+                    </div>
+                    <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-center">
+                      <div className="text-xs text-neutral-500">Money saved (weekly)</div>
+                      <div className="mt-1 text-lg font-bold">
+                        {p.moneyWeekly.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-neutral-500">Estimated annual savings:</span>{" "}
-                <span className="font-semibold">
-                  {annualSavings.toLocaleString()}
-                </span>
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------- Step 8: ROI ---------- */
-function StepROI({ annualSavings }: { annualSavings: number }) {
+/* ---------- Summary helpers ---------- */
+function Tile({
+  label,
+  value,
+  format,
+  strong,
+}: {
+  label: string;
+  value: number;
+  format: "hours" | "money" | "money0";
+  strong?: boolean;
+}) {
+  let formatted = "";
+  if (format === "hours") {
+    formatted = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  } else if (format === "money") {
+    formatted = value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  } else {
+    formatted = Math.round(value).toLocaleString();
+  }
   return (
-    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
-      <h3 className="text-base font-semibold">Estimated Impact</h3>
-      <p className="mt-2 text-3xl font-bold">{annualSavings.toLocaleString()}</p>
-      <p className="text-sm text-neutral-600">Estimated annual time-savings value (simple model).</p>
-    </div>
-  );
-}
+    <div className="rounded-xl border border-neutral-200 bg-white p-4 text-center">
+      <div className="text-xs text-neutral-500">{label}</div>
+      <div className={`mt-1 ${strong ? "text-2xl" : "text-xl"} font-bold text-neutral-900`}>
+        {formatted}
+      </div
