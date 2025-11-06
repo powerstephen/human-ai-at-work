@@ -36,12 +36,8 @@ const CURRENCY_ICON: Record<Currency,string> = {
   AUD: '🇦🇺',
 };
 
-const symbol = (c: Currency) => (
-  c === 'EUR' ? '€' :
-  c === 'USD' ? '$' :
-  c === 'GBP' ? '£'  :
-  'A$' // AUD
-);
+const symbol = (c: Currency) =>
+  c === 'EUR' ? '€' : c === 'USD' ? '$' : c === 'GBP' ? '£' : 'A$';
 
 const fmtMoney = (n:number, c:Currency) =>
   new Intl.NumberFormat('en', { style:'currency', currency:c, maximumFractionDigits:0 }).format(n);
@@ -86,7 +82,7 @@ export default function Page(){
 ============================================================ */
 function Calculator(){
   /* ------ Global/basic state ------ */
-  const [step, setStep] = useState<number>(0); // 0 Team, 1 Maturity, 2 Priorities, then goal steps..., last Results
+  const [step, setStep] = useState<number>(0);
 
   const [currency, setCurrency] = useState<Currency>('EUR');
   const [team, setTeam] = useState<Team>('all');
@@ -102,18 +98,17 @@ function Calculator(){
   /* ------ AI Maturity ------ */
   const [maturity, setMaturity] = useState<number>(3); // 1..10
   const [useMaturityEstimate, setUseMaturityEstimate] = useState<boolean>(true);
-  // Map maturity → suggested hours saved / person / week (1→5h, 10→1h)
   const maturityHoursMap = [5, 4.5, 4, 3.5, 3, 2.5, 2, 1.5, 1.2, 1];
   const maturityHoursPerPerson = maturityHoursMap[clamp(maturity,1,10)-1] ?? 3;
   const maturityHoursTeam = Math.round(maturityHoursPerPerson * 52 * employees);
 
-  /* ------ Choose Top-3 priorities (tick boxes) ------ */
-  const [selected, setSelected] = useState<Goal[]>(['throughput','retention','upskilling']); // defaults
+  /* ------ Choose Top-3 priorities ------ */
+  const [selected, setSelected] = useState<Goal[]>(['throughput','retention','upskilling']);
   const toggleGoal = (g:Goal)=>{
     setSelected(prev=>{
       const exists = prev.includes(g);
       if (exists) return prev.filter(x=>x!==g);
-      if (prev.length>=3) return prev; // cap at 3
+      if (prev.length>=3) return prev;
       return [...prev, g];
     });
   };
@@ -148,7 +143,7 @@ function Calculator(){
   const [upHoursPerWeek, setUpHoursPerWeek] = useState<number>(2.0);
   const [upUtilPct, setUpUtilPct] = useState<number>(70);
 
-  /* ------ Formulas (maturity can drive hours) ------ */
+  /* ------ Formulas ------ */
   const hoursPerWeekThroughput = useMaturityEstimate ? maturityHoursPerPerson : tpHoursPerWeek;
   const hoursPerWeekUpskilling = useMaturityEstimate ? maturityHoursPerPerson : upHoursPerWeek;
 
@@ -172,21 +167,17 @@ function Calculator(){
     ? (csConsolidationPerMonth + csEliminatedTools*csAvgToolCostPerMonth) * 12
     : 0;
 
-  // Upskilling base (before overlap guard)
   const upBase = selected.includes('upskilling')
     ? (upCoveragePct/100) * employees * hoursPerWeekUpskilling * 52 * hourly * clamp(upUtilPct/100,0,1)
     : 0;
-  // Overlap guard with Throughput
   const valUpskilling = (selected.includes('throughput') && selected.includes('upskilling'))
-    ? upBase * 0.7
-    : upBase;
+    ? upBase * 0.7 : upBase;
 
   const annualValue = valThroughput + valQuality + valOnboarding + valRetention + valCost + valUpskilling;
   const monthlySavings = annualValue / 12;
   const roiMultiple = programCost>0 ? (annualValue/programCost) : 0;
   const paybackMonths = monthlySavings>0 ? (programCost / monthlySavings) : Infinity;
 
-  // hours for results
   const hoursThroughput = selected.includes('throughput') ? hoursPerWeekThroughput*52*employees : 0;
   const hoursQuality = selected.includes('quality') ? qlEventsPerPersonPerMonth*employees*12*(qlReductionPct/100)*qlHoursPerFix : 0;
   const hoursUpskilling = selected.includes('upskilling')
@@ -213,25 +204,9 @@ function Calculator(){
   ============================================================ */
   const container = { maxWidth: 1120, margin:'0 auto', padding:'24px 20px 32px', fontFamily:'Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial', boxSizing:'border-box', color:'#0E1320' } as const;
 
-  // HERO image (image only — no title or subheading). Match card outer width (980 + 2px border).
-  const heroImgWrap = {
-    width:'100%',
-    maxWidth:982,
-    margin:'0 auto 16px',
-    position:'relative',
-    zIndex:2
-  } as const;
-
-  const heroImg = {
-    width:'100%',
-    height:'auto',
-    maxHeight:320,
-    objectFit:'cover',
-    display:'block',
-    borderRadius:0,
-    border:'none',
-    boxShadow:'none'
-  } as const;
+  // HERO image (image only). Match card outer width (980 + 2px border).
+  const heroImgWrap = { width:'100%', maxWidth:982, margin:'0 auto 16px', position:'relative', zIndex:2 } as const;
+  const heroImg = { width:'100%', height:'auto', maxHeight:320, objectFit:'cover', display:'block', borderRadius:0, border:'none', boxShadow:'none' } as const;
 
   const card = { background:'#fff', border:'1px solid #E7ECF7', borderRadius:16, boxShadow:'0 10px 28px rgba(12,20,38,.08)', padding:18, maxWidth:980, margin:'16px auto' } as const;
   const h3 = { margin:'0 0 .7rem', fontSize:'1.06rem', fontWeight:900, color:'#0F172A' } as const;
@@ -244,7 +219,7 @@ function Calculator(){
   const help = { fontSize:'.86rem', color:'#667085' } as const;
 
   const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800, border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
-  const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const; // white text on blue
+  const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const;
   const chip = (active:boolean)=>({
     display:'inline-flex', alignItems:'center', gap:8, padding:'8px 10px',
     borderRadius:999, border:`1px solid ${active?'transparent':'#E7ECF7'}`,
@@ -256,7 +231,6 @@ function Calculator(){
   const kpiLabel = { fontSize:'.76rem', color:'#64748B', fontWeight:800, marginTop:2 } as const;
   const kpiValue = { fontWeight:900, fontSize:'1.16rem' } as const;
 
-  // Stepper labels evenly spread
   const stepperWrap = { display:'flex', alignItems:'center', gap:10, marginTop:10, flexWrap:'wrap' } as const;
   const stepperLabels = { display:'flex', justifyContent:'space-between', width:'100%', gap:8, flexWrap:'nowrap' } as const;
 
@@ -284,8 +258,8 @@ function Calculator(){
                 <div style={{
                   width:26, height:26, borderRadius:999,
                   border:'none',
-                  background: BLUE,   // always blue
-                  color:'#fff',       // white number
+                  background: BLUE,
+                  color:'#fff',
                   display:'flex', alignItems:'center', justifyContent:'center',
                   fontWeight:900, fontSize:12, flex:'0 0 auto'
                 }}>{i+1}</div>
@@ -360,7 +334,6 @@ function Calculator(){
                 onChange={e=>setMaturity(Number(e.target.value))}
                 style={{ width:'100%' }}
               />
-              {/* evenly spaced 1..10 under the slider */}
               <div style={{ display:'grid', gridTemplateColumns:'repeat(10,1fr)', marginTop:6 }}>
                 {Array.from({length:10}).map((_,i)=>(
                   <div key={i} style={{ textAlign:'center', fontSize:12, color:'#667085' }}>{i+1}</div>
@@ -404,7 +377,7 @@ function Calculator(){
         </section>
       )}
 
-      {/* STEP 2: PRIORITIES (tick boxes) */}
+      {/* STEP 2: PRIORITIES */}
       {steps[step]?.key==='priorities' && (
         <section style={card}>
           <h3 style={h3}>Priorities</h3>
@@ -483,12 +456,11 @@ function Calculator(){
         />
       )}
 
-      {/* RESULTS (with headers & spaced columns) */}
+      {/* RESULTS */}
       {steps[step]?.key==='results' && (
         <section style={card}>
           <h3 style={h3}>Results</h3>
 
-          {/* KPI ROW */}
           <div style={{ display:'grid', gap:12, gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', marginBottom:10 }}>
             <KPI label="Total annual value" value={fmtMoney(annualValue, currency)} />
             <KPI label="Annual ROI" value={`${(roiMultiple||0).toFixed(1)}×`} />
@@ -496,21 +468,16 @@ function Calculator(){
             <KPI label="Total hours saved (est.)" value={totalHours.toLocaleString()} />
           </div>
 
-          {/* PRIORITIES TABLE */}
           <PrioritiesTable
             currency={currency}
             rows={buildBreakdownRows({
               currency, hourly, employees,
-              // values
               valThroughput, valQuality, valOnboarding, valRetention, valCost, valUpskilling,
-              // hours
               hoursThroughput, hoursQuality, hoursUpskilling,
-              // flags
               selected, avgSalary, obHiresPerYear, obBaselineRamp, obImprovedRamp, rtBaselineTurnoverPct, rtReductionPct, rtReplacementCostPct, csConsolidationPerMonth, csEliminatedTools, csAvgToolCostPerMonth, upCoveragePct, upHoursPerWeek: hoursPerWeekUpskilling
             })}
           />
 
-          {/* NEXT STEPS */}
           <div style={{ marginTop:16, padding:'12px 14px', border:'1px solid #E7ECF7', borderRadius:12, background:'#F8FAFF' }}>
             <strong>Next steps</strong>
             <ul style={{ margin:'8px 0 0 18px', color:'#475569' }}>
@@ -766,7 +733,7 @@ function GoalStep(props: {
   const h3 = { margin:'0 0 .7rem', fontSize:'1.06rem', fontWeight:900, color:'#0F172A' } as const;
   const gridAuto = { display:'grid', gap:14, gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', alignItems:'start' } as const;
   const help = { fontSize:'.86rem', color:'#667085' } as const;
-  const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800', border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
+  const btn = { display:'inline-flex', alignItems:'center', gap:8, padding:'10px 14px', borderRadius:12, fontWeight:800, border:'1px solid #E7ECF7', cursor:'pointer', background:'#fff', color:'#0E1320' } as const;
   const btnPrimary = { ...btn, background: BLUE, color:'#fff', borderColor:'transparent', boxShadow:'0 8px 20px rgba(31,77,255,.25)' } as const;
 
   if (goal==='throughput') {
@@ -877,7 +844,7 @@ function GoalStep(props: {
     <section style={card}>
       <h3 style={h3}>Upskilling</h3>
       <p style={help}>Competency coverage after training drives steady time savings per competent employee.</p>
-      <div style={gridAuto}>
+      <div style={{ gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', display:'grid', gap:14, alignItems:'start' }}>
         <FieldNumber label="Competency coverage after program (%)" value={props.upCoveragePct} onChange={props.setUpCoveragePct} min={0} max={100} step={5}/>
         <FieldNumber label="Hours saved per competent person / week" value={props.upHoursPerWeek} onChange={props.setUpHoursPerWeek} step={0.5}/>
         <FieldNumber label="Utilization factor (%)" value={props.upUtilPct} onChange={props.setUpUtilPct} min={0} max={100} step={5}/>
