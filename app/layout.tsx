@@ -10,7 +10,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      {/* DO NOT add any classes that force white text or a blue hero here */}
       <body>{children}</body>
     </html>
   );
