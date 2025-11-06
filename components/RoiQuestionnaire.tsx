@@ -26,6 +26,7 @@ const PRIORITIES: Array<{ key: PriorityKey; blurb: string }> = [
 ];
 
 type DepartmentScope = "Company-wide" | "Specific department";
+
 const DEPARTMENTS = [
   "Sales","Marketing","Customer Support","HR","Finance","Engineering","Operations","Product","Other",
 ];
@@ -73,7 +74,14 @@ const initialData: FormData = {
 };
 
 const STEPS = [
-  "Basics","Priorities","AI Maturity","Priority #1","Priority #2","Priority #3","Summary","ROI",
+  "Basics",
+  "Priorities",
+  "AI Maturity",
+  "Priority #1",
+  "Priority #2",
+  "Priority #3",
+  "Summary",
+  "ROI",
 ];
 
 /* -------------------- Component -------------------- */
@@ -173,7 +181,10 @@ export default function RoiQuestionnaire() {
           <span>{progress}%</span>
         </div>
         <div className="mt-2 h-2 w-full rounded-full bg-neutral-200">
-          <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
+          <div
+            className="h-2 rounded-full bg-blue-600 transition-all"
+            style={{ width: `${progress}%` }}
+          />
         </div>
         <ol className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] text-neutral-600 sm:grid-cols-8">
           {STEPS.map((label, i) => {
@@ -506,4 +517,145 @@ function StepPriorityDetail({
   if (!priority) {
     return (
       <div className="rounded-xl border border-neutral-200 bg-white p-5">
-        <div className="text-sm text-neutral-600">Select priorities on Step 2 to configure this
+        <div className="text-sm text-neutral-600">
+          Select priorities on Step 2 to configure this section.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h3 className="text-base font-semibold">{title}</h3>
+        <p className="text-sm text-neutral-600">{priority}</p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
+            Coverage of work affected (%) — {priority}
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={inputs?.coveragePct ?? 0}
+            onChange={(e) => onChange("coveragePct", Number(e.target.value))}
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            What % of weekly work touches this priority?
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-neutral-700">
+            Improvement within covered work (%) — {priority}
+          </label>
+          <input
+            type="number"
+            min={0}
+            max={100}
+            value={inputs?.improvementPct ?? 0}
+            onChange={(e) => onChange("improvementPct", Number(e.target.value))}
+            className="w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            Efficiency/quality lift within the covered portion.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Step 7: Summary (Hours vs Money layout you asked for) ---------- */
+function StepSummary({
+  data,
+  perPersonWeekly,
+  teamWeekly,
+  hourlyRate,
+  annualSavings,
+}: {
+  data: FormData;
+  perPersonWeekly: number;
+  teamWeekly: number;
+  hourlyRate: number;
+  annualSavings: number;
+}) {
+  return (
+    <div className="space-y-6">
+      {/* Overview */}
+      <div className="rounded-xl border border-neutral-200 bg-white p-4">
+        <h3 className="text-base font-semibold">Overview</h3>
+        <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          <div><span className="text-neutral-500">Scope:</span> {data.scope}</div>
+          <div><span className="text-neutral-500">Department:</span> {data.scope === "Company-wide" ? "—" : (data.department || "—")}</div>
+          <div><span className="text-neutral-500">Company:</span> {data.companyName || "—"}</div>
+          <div><span className="text-neutral-500">Employees (in scope):</span> {data.employees || "—"}</div>
+          <div><span className="text-neutral-500">Adoption %:</span> {data.adoptionRatePct || "—"}</div>
+          <div className="text-right"><span className="text-neutral-500">Average salary:</span> {data.averageSalary || "—"}</div>
+          <div className="md:col-span-2">
+            <span className="text-neutral-500">Priorities:</span>{" "}
+            {data.priorities.length ? data.priorities.join(", ") : "—"}
+          </div>
+        </div>
+      </div>
+
+      {/* Split section with HEADINGS and spacing so Hours isn't cramped */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Hours saved (centered card) */}
+        <div className="mx-auto w-full max-w-md">
+          <div className="rounded-xl border border-neutral-200 bg-white p-5 text-center">
+            <h4 className="text-sm font-semibold text-neutral-900">Hours saved</h4>
+            <div className="mt-3 flex items-center justify-center gap-8">
+              <div className="text-2xl font-bold text-neutral-900">
+                {perPersonWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <div className="mt-1 text-xs font-normal text-neutral-500">Per person / week</div>
+              </div>
+              <div className="text-2xl font-bold text-neutral-900">
+                {teamWeekly.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                <div className="mt-1 text-xs font-normal text-neutral-500">Per team / week</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Money saved (right-aligned values) */}
+        <div>
+          <div className="rounded-xl border border-neutral-200 bg-white p-5">
+            <h4 className="text-sm font-semibold text-neutral-900">Money saved</h4>
+            <div className="mt-3 grid grid-cols-1 gap-3 text-sm">
+              <div className="text-right">
+                <span className="text-neutral-500">Hourly rate basis:</span>{" "}
+                <span className="font-semibold">
+                  {hourlyRate > 0
+                    ? hourlyRate.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                    : "—"}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-neutral-500">Estimated annual savings:</span>{" "}
+                <span className="font-semibold">
+                  {annualSavings.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Step 8: ROI ---------- */
+function StepROI({ annualSavings }: { annualSavings: number }) {
+  return (
+    <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+      <h3 className="text-base font-semibold">Estimated Impact</h3>
+      <p className="mt-2 text-3xl font-bold">{annualSavings.toLocaleString()}</p>
+      <p className="text-sm text-neutral-600">Estimated annual time-savings value (simple model).</p>
+    </div>
+  );
+}
