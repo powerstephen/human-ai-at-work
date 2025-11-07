@@ -2,192 +2,71 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Page base */
-:root {
-  --brand: #3366fe; /* Brainster vivid blue */
+/* Brand tokens */
+:root{
+  --brand:#3366fe;          /* vivid blue */
+  --brand-600:#1f49f7;
+  --ink:#0b1022;
 }
 
-html, body {
-  height: 100%;
-  background: #0b1022; /* deep navy */
-  color: #ffffff;
-}
-
-/* Hero banner */
-.hero {
-  position: relative;
-  width: 100%;
-  height: 320px;           /* controlled height */
-  background-image: url('/hero.png');
-  background-size: cover;  /* fills area */
-  background-position: center center;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.hero::after {
-  /* subtle dark overlay for legibility on bright hero */
-  content: '';
-  position: absolute; inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0,0,0,0.25),
-    rgba(0,0,0,0.35)
-  );
-}
-
-/* Container */
-.container {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 0 16px;
-}
-
-/* KPI tiles row under hero */
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-top: -60px; /* lift up into hero edge */
-}
-
-.kpi {
-  border-radius: 12px;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.15);
-  padding: 14px;
-}
-
-.kpi .label {
-  font-size: 12px;
-  opacity: 0.85;
-}
-
-.kpi .value {
-  font-size: 20px;
-  font-weight: 700;
-  margin-top: 6px;
-}
-
-/* Card */
-.card {
-  border-radius: 16px;
-  background: #0f1630;
-  border: 1px solid rgba(255,255,255,0.08);
-  padding: 16px;
+/* Page container */
+.container-narrow{
+  @apply max-w-6xl mx-auto px-4 md:px-8;
 }
 
 /* Stepper */
-.stepper {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin: 24px 0 8px;
+.stepper{
+  @apply w-full bg-white rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3 p-3 overflow-x-auto;
+}
+.step-pill{
+  @apply flex items-center gap-2 rounded-full px-3 py-1.5 border border-slate-200 bg-slate-50 text-slate-600 text-sm whitespace-nowrap;
+}
+.step-pill.active{
+  @apply border-[color:var(--brand)] bg-[color:var(--brand)] text-white;
 }
 
-.stepper .dot {
-  text-align: center;
-  padding: 8px 6px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
-  font-size: 12px;
+/* Cards / inputs */
+.card{
+  @apply bg-white rounded-2xl border border-slate-200 shadow-sm;
 }
-
-.stepper .dot.active {
-  border-color: var(--brand);
-  background: rgba(51,102,254,0.18);
+.card-pad{
+  @apply p-4 md:p-6;
 }
-
-.stepper-labels {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  font-size: 12px;
-  color: #ffffff; /* ensure white numbers/labels */
-  opacity: 0.9;
+.label{
+  @apply block text-sm font-medium text-slate-700 mb-2;
 }
-
-/* Inputs */
-.input, .select {
-  width: 100%;
-  color: #111827;
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 10px 12px;
-  border: 1px solid #e5e7eb;
-  font-size: 14px;
+.input{
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 outline-none focus:ring-2 focus:ring-[color:var(--brand)] focus:border-[color:var(--brand)];
 }
-
-.check-row {
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 10px;
-}
-
-.checkbox-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 9999px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.checkbox-pill input {
-  accent-color: var(--brand);
+.help{
+  @apply text-sm text-slate-500 mt-2;
 }
 
 /* Buttons */
-.btn {
-  background: var(--brand);
-  color: white;           /* ensure white text */
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-weight: 600;
+.btn{
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 font-medium transition-colors;
+}
+.btn-primary{
+  @apply bg-[color:var(--brand)] text-white hover:bg-[color:var(--brand-600)];
+}
+.btn-ghost{
+  @apply bg-white text-slate-700 border border-slate-300 hover:bg-slate-50;
 }
 
-.btn.secondary {
-  background: transparent;
-  color: white;           /* ensure white text */
-  border: 1px solid rgba(255,255,255,0.18);
+/* KPI tiles (beneath hero if you bring them back later) */
+.kpi{
+  @apply rounded-xl bg-white border border-slate-200 p-4 text-slate-800 shadow-sm;
 }
+.kpi .label{ @apply text-xs uppercase tracking-wide text-slate-500; }
+.kpi .value{ @apply text-2xl font-semibold; }
 
-/* Results table */
-.results {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-  font-size: 14px;
+/* Progress bar numbers */
+.progress-grid{
+  @apply grid grid-cols-7 gap-2 text-center text-xs font-medium mt-3;
 }
-
-.results th, .results td {
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 10px 8px;
+.progress-grid span{
+  @apply rounded-full px-2 py-1 bg-slate-100 text-slate-600;
 }
-
-.results thead th {
-  text-align: left;
-  font-weight: 600;
-  color: rgba(255,255,255,0.9);
-}
-
-/* Utility */
-.mt-2 { margin-top: 8px; }
-.mt-3 { margin-top: 12px; }
-.mt-4 { margin-top: 16px; }
-.mt-6 { margin-top: 24px; }
-.mt-8 { margin-top: 32px; }
-.grid-2 { display:grid; grid-template-columns: repeat(2,1fr); gap:12px; }
-.grid-3 { display:grid; grid-template-columns: repeat(3,1fr); gap:12px; }
-.grid-4 { display:grid; grid-template-columns: repeat(4,1fr); gap:12px; }
-
-@media (max-width: 920px) {
-  .kpis { grid-template-columns: repeat(2, 1fr); margin-top: -40px; }
-  .grid-3 { grid-template-columns: 1fr; }
-  .grid-4 { grid-template-columns: 1fr 1fr; }
-  .stepper, .stepper-labels { grid-template-columns: repeat(5, 1fr); }
+.progress-grid .current{
+  @apply bg-[color:var(--brand)] text-white;
 }
