@@ -1,696 +1,329 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
+import BrandHero from "../components/BrandHero";
 
-/** ---------------------------
- * Types & constants
- * --------------------------*/
-type Currency = "EUR" | "USD" | "GBP" | "AUD";
-type Dept =
-  | "Company-wide"
-  | "Marketing"
-  | "Sales"
-  | "Customer Support"
-  | "Operations"
-  | "Engineering"
-  | "HR";
+type Currency = "€" | "$" | "£";
+const sym = (c: Currency) => (c === "€" ? "€" : c === "$" ? "$" : "£");
 
-const CURRENCY_SYMBOL: Record<Currency, string> = {
-  EUR: "€",
-  USD: "$",
-  GBP: "£",
-  AUD: "A$",
-};
-
-const PRIORITY_META = [
-  {
-    key: "throughput",
-    label: "Throughput",
-    note: "Ship faster; reduce cycle time on core workflows.",
-  },
-  {
-    key: "quality",
-    label: "Quality",
-    note: "Fewer reworks; higher first-pass yield from better prompts/QA.",
-  },
-  {
-    key: "onboarding",
-    label: "Onboarding",
-    note: "Ramp new hires quicker with curated prompt packs & SOPs.",
-  },
-  {
-    key: "retention",
-    label: "Retention",
-    note: "Lower regretted attrition via mastery, agency, and better tools.",
-  },
-  {
-    key: "upskilling",
-    label: "Upskilling",
-    note: "Expand AI competency coverage across managers & ICs.",
-  },
-] as const;
-
-const MATURITY_LABELS: Record<number, string> = {
-  1: "Ad-hoc experiments; big wins from prompt basics + workflow mapping",
-  2: "Isolated usage; early playbooks emerging",
-  3: "Team champions; usage sporadic",
-  4: "Pilot programs; initial QA/guardrails",
-  5: "Multi-team adoption; metrics starting to be tracked",
-  6: "Standard playbooks; shared prompt library; measured",
-  7: "Automations in key workflows; steady ROI",
-  8: "Cross-functional coverage; strong governance",
-  9: "Most workflows augmented; robust metrics + QA",
-  10: "AI-first operations; continuous improvement loop",
-};
-
-/** Map maturity → typical hours saved range per employee/week.
- * We bias low at the bottom (still real ~1h/day) and more efficient at the top (less raw hours; higher leverage).
- */
-function hoursSavedFromMaturity(maturity: number): number {
-  // 1 → 5h/wk, 5 → 6h/wk, 10 → 7h/wk (ceiling); smooth curve
-  const base = 5 + (maturity - 1) * (2 / 9);
-  return Math.round(base * 10) / 10; // one decimal
-}
-
-/** ---------------------------
- * Small UI primitives
- * --------------------------*/
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="label">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function NumberInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input type="number" className="input" {...props} />;
-}
-
-function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return <input type="text" className="input" {...props} />;
-}
-
-/** ---------------------------
- * Main Page
- * --------------------------*/
 export default function Page() {
-  // Step state
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
-
-  // Step 1: Team (Basics)
-  const [dept, setDept] = useState<Dept>("Company-wide");
+  // Step 1
+  const [team, setTeam] = useState(
+    "Company-wide" as
+      | "Company-wide"
+      | "Marketing"
+      | "Sales"
+      | "Customer Support"
+      | "Operations"
+      | "Engineering"
+      | "HR"
+  );
   const [employees, setEmployees] = useState<number>(50);
-  const [currency, setCurrency] = useState<Currency>("EUR");
+  const [currency, setCurrency] = useState<Currency>("€");
 
-  // Step 2: Priorities (choose up to 3)
-  const [selected, setSelected] = useState<string[]>(["throughput", "quality", "onboarding"]);
+  // Step 2
+  const [maturity, setMaturity] = useState<number>(3);
+  const hoursPerPersonPerWeek = useMemo(() => {
+    // 5–8 hrs/wk depending on maturity (as agreed)
+    const min = 5, max = 8;
+    const pct = (maturity - 1) / 9;
+    return +(min + (max - min) * pct).toFixed(1);
+  }, [maturity]);
 
-  // Step 3: AI Maturity (1–10)
-  const [maturity, setMaturity] = useState<number>(4);
+  // Step 3
+  type Priority = "throughput" | "quality" | "onboarding" | "retention" | "upskilling";
+  const LABEL: Record<Priority, string> = {
+    throughput: "Throughput",
+    quality: "Quality",
+    onboarding: "Onboarding",
+    retention: "Retention",
+    upskilling: "Upskilling",
+  };
+  const HELP: Record<Priority, string> = {
+    throughput: "Ship faster; reduce cycle time & context switching.",
+    quality: "Fewer reworks; better first-pass yield & QA guardrails.",
+    onboarding: "Ramp new hires quicker with playbooks & examples.",
+    retention: "Lower regretted attrition via engagement & growth.",
+    upskilling: "Expand AI competency; make ‘good’ the default.",
+  };
+  const [selected, setSelected] = useState<Priority[]>(["throughput", "quality", "onboarding"]);
 
-  // Step 4: Training & Cost
-  const [trainingHoursPerEmployee, setTrainingHoursPerEmployee] = useState<number>(8);
-  const [programMonths, setProgramMonths] = useState<number>(3);
-  const [hourlyCost, setHourlyCost] = useState<number>(40);
+  // Step 4
+  const [hourlyCost, setHourlyCost] = useState<number>(35);
+  const [durationMonths, setDurationMonths] = useState<number>(6);
 
   // Derived
-  const symbol = CURRENCY_SYMBOL[currency];
-
-  const hoursPerEmployeePerWeek = useMemo(
-    () => hoursSavedFromMaturity(maturity),
-    [maturity]
-  );
-  const teamHoursPerWeek = useMemo(
-    () => Math.round(hoursPerEmployeePerWeek * employees),
-    [hoursPerEmployeePerWeek, employees]
-  );
-  const teamHoursPerMonth = useMemo(
-    () => Math.round(teamHoursPerWeek * 4.33), // avg weeks per month
-    [teamHoursPerWeek]
-  );
-  const monthlyValue = useMemo(
-    () => Math.round(teamHoursPerMonth * hourlyCost),
-    [teamHoursPerMonth, hourlyCost]
+  const hoursTeamPerWeek = useMemo(
+    () => hoursPerPersonPerWeek * Math.max(0, employees),
+    [hoursPerPersonPerWeek, employees]
   );
 
-  // Simple per-priority split for demo: weight the selection equally
-  const breakdown = useMemo(() => {
-    const picks = PRIORITY_META.filter((p) => selected.includes(p.key));
-    const per = picks.length > 0 ? teamHoursPerMonth / picks.length : 0;
-    return picks.map((p) => ({
-      key: p.key,
-      label: p.label,
-      note: p.note,
-      hours: Math.round(per),
-      money: Math.round(per * hourlyCost),
-    }));
-  }, [selected, teamHoursPerMonth, hourlyCost]);
+  const distribution = useMemo(() => {
+    const chosen = selected.length ? selected : (["throughput"] as Priority[]);
+    const split = hoursTeamPerWeek / chosen.length;
+    const map: Record<Priority, number> = {
+      throughput: 0, quality: 0, onboarding: 0, retention: 0, upskilling: 0,
+    };
+    chosen.forEach((p) => (map[p] = split));
+    return map;
+  }, [selected, hoursTeamPerWeek]);
 
-  const paybackMonths = useMemo(() => {
-    // Cost ≈ training hours * hourly cost * employees
-    const trainingCost =
-      trainingHoursPerEmployee * hourlyCost * employees;
-    // Value per month = monthlyValue
-    if (monthlyValue <= 0) return Infinity;
-    return Math.max(0.5, Math.round((trainingCost / monthlyValue) * 10) / 10); // one decimal, min 0.5
-  }, [trainingHoursPerEmployee, hourlyCost, employees, monthlyValue]);
+  const kpis = useMemo(() => {
+    const weeks = Math.max(1, Math.round((durationMonths * 52) / 12));
+    const hoursYear = hoursTeamPerWeek * weeks;
+    const monthly = (hoursTeamPerWeek * hourlyCost) / 4.33;
+    const annual = monthly * 12;
+    const trainingCost = employees * 8 * hourlyCost; // simple training model
+    const payback = monthly > 0 ? Math.max(0.2, trainingCost / monthly) : 0;
+    const annualRoi = trainingCost > 0 ? annual / trainingCost : 0;
+    return { hoursYear, monthly, annual, trainingCost, payback, annualRoi };
+  }, [hoursTeamPerWeek, hourlyCost, employees, durationMonths]);
 
-  const annualROI = useMemo(() => {
-    // naive multiple: (12 * monthlyValue) / trainingCost
-    const trainingCost =
-      trainingHoursPerEmployee * hourlyCost * employees;
-    if (trainingCost <= 0) return 0;
-    const mult = (12 * monthlyValue) / trainingCost;
-    return Math.round(mult * 10) / 10;
-  }, [trainingHoursPerEmployee, hourlyCost, employees, monthlyValue]);
+  const fmt = (n: number, d = 0) => n.toLocaleString(undefined, { maximumFractionDigits: d });
+  const fmtMoney = (n: number, d = 0) =>
+    `${sym(currency)}${n.toLocaleString(undefined, { maximumFractionDigits: d })}`;
 
-  /** Helpers */
-  const canContinue =
-    (step === 1 && employees > 0) ||
-    (step === 2 && selected.length > 0 && selected.length <= 3) ||
-    (step === 3 && maturity >= 1 && maturity <= 10) ||
-    (step === 4 && trainingHoursPerEmployee >= 0 && programMonths >= 1);
-
-  function togglePriority(key: string) {
-    setSelected((prev) => {
-      const exists = prev.includes(key);
-      if (exists) return prev.filter((k) => k !== key);
-      // max 3
-      if (prev.length >= 3) return prev;
-      return [...prev, key];
-    });
-  }
-
-  function resetAll() {
-    setStep(1);
-    setDept("Company-wide");
-    setEmployees(50);
-    setCurrency("EUR");
-    setSelected(["throughput", "quality", "onboarding"]);
-    setMaturity(4);
-    setTrainingHoursPerEmployee(8);
-    setProgramMonths(3);
-    setHourlyCost(40);
-  }
-
-  /** Render */
   return (
-    <div className="min-h-screen">
-      <div className="px-4 md:px-8 max-w-6xl mx-auto py-6 md:py-10">
-        {/* ---------- HERO (replaces old blue box) ---------- */}
-        <div className="hero-wrap mb-6 md:mb-8">
-          {/* If /hero.png exists in public, this will load. Fallback to solid if it doesn’t. */}
-          <Image
-            src="/hero.png"
-            alt="AI at Work — Brainster"
-            fill
-            priority
-            className="hero-img"
-            onError={(e) => {
-              // If image fails, keep a nice solid header
-              (e.target as HTMLImageElement).style.display = "none";
-            }}
-          />
+    <main>
+      <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-10 space-y-8">
+        {/* HERO replaces the old blue header area */}
+        <BrandHero />
+
+        {/* Step badges */}
+        <div className="flex flex-wrap gap-2 text-xs md:text-sm">
+          <span className="step-badge">1 · Team</span>
+          <span className="step-badge">2 · AI Maturity</span>
+          <span className="step-badge">3 · Priorities</span>
+          <span className="step-badge">4 · Training & Duration</span>
+          <span className="step-badge">5 · Results</span>
         </div>
 
-        {/* ---------- KPI Tiles under hero ---------- */}
-        <div className="kpis mb-8">
-          <div className="kpi">
-            <div className="label">Monthly savings</div>
-            <div className="value">
-              {symbol}
-              {monthlyValue.toLocaleString()}
+        {/* Step 1 */}
+        <section className="section-card">
+          <h2 className="section-title mb-4">Step 1 · Team</h2>
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6">
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Department</label>
+              <select
+                className="select"
+                value={team}
+                onChange={(e) => setTeam(e.target.value as typeof team)}
+              >
+                {["Company-wide","Marketing","Sales","Customer Support","Operations","Engineering","HR"].map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
             </div>
-          </div>
-          <div className="kpi">
-            <div className="label">Payback</div>
-            <div className="value">{isFinite(paybackMonths) ? `${paybackMonths} months` : "—"}</div>
-          </div>
-          <div className="kpi">
-            <div className="label">Annual ROI</div>
-            <div className="value">{annualROI ? `${annualROI}×` : "—"}</div>
-          </div>
-          <div className="kpi">
-            <div className="label">Hours saved / year</div>
-            <div className="value">{Math.round(teamHoursPerMonth * 12).toLocaleString()}</div>
-          </div>
-        </div>
-
-        {/* ---------- Stepper ---------- */}
-        <div className="mb-6">
-          <div className="stepper">
-            <div className="stepper-track">
-              <div
-                className="stepper-fill"
-                style={{ width: `${((step - 1) / 4) * 100}%` }}
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Employees in scope</label>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                value={employees}
+                onChange={(e) => setEmployees(+e.target.value || 0)}
+                placeholder="e.g., 50"
               />
             </div>
-            <div className="stepper-dots">
-              {[
-                { n: 1, label: "Team" },
-                { n: 2, label: "Priorities" },
-                { n: 3, label: "Maturity" },
-                { n: 4, label: "Training" },
-                { n: 5, label: "Results" },
-              ].map((s) => {
-                const state =
-                  step === s.n ? "active" : step > s.n ? "done" : "idle";
-                return (
-                  <div key={s.n} className="step-dot">
-                    <div
-                      className={[
-                        "step-badge",
-                        state === "active" && "step-badge--active",
-                        state === "done" && "step-badge--done",
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                    >
-                      {s.n}
-                    </div>
-                    <div className="step-label">{s.label}</div>
-                  </div>
-                );
-              })}
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Currency</label>
+              <div className="flex gap-2">
+                {(["€", "$", "£"] as Currency[]).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setCurrency(c)}
+                    className={`flex-1 h-10 rounded-lg border px-3 font-medium ${
+                      currency === c ? "bg-white text-brand-navy border-white" : "bg-white/10 border-white/10 text-white"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* ---------- Steps ---------- */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* Step 1: Team */}
-          {step === 1 && (
-            <div className="card p-6">
-              <h2 className="text-xl font-semibold mb-4">Team</h2>
-              <div className="grid md:grid-cols-3 gap-4">
-                <Field label="Department">
-                  <select
-                    className="select"
-                    value={dept}
-                    onChange={(e) => setDept(e.target.value as Dept)}
-                  >
-                    {[
-                      "Company-wide",
-                      "Marketing",
-                      "Sales",
-                      "Customer Support",
-                      "Operations",
-                      "Engineering",
-                      "HR",
-                    ].map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Employees in scope">
-                  <NumberInput
-                    min={1}
-                    step={1}
-                    value={employees}
-                    onChange={(e) => setEmployees(Number(e.target.value))}
-                  />
-                </Field>
-
-                <Field label="Currency">
-                  <div className="flex flex-wrap gap-2">
-                    {(["EUR", "USD", "GBP", "AUD"] as Currency[]).map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCurrency(c)}
-                        className={`btn ${
-                          currency === c
-                            ? "btn-primary"
-                            : "bg-white text-[var(--ink)] border border-gray-200"
-                        }`}
-                        title={c}
-                      >
-                        {c === "AUD" ? "A$" : CURRENCY_SYMBOL[c]} {c}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button className="btn btn-ghost" onClick={resetAll}>
-                  Start over
-                </button>
-                <button
-                  className="btn btn-primary"
-                  disabled={!canContinue}
-                  onClick={() => setStep(2)}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 2: Priorities */}
-          {step === 2 && (
-            <div className="card p-6">
-              <h2 className="text-xl font-semibold mb-2">Priorities</h2>
-              <p className="text-[var(--muted)] mb-4">
-                Pick up to <b>three</b> areas to focus your business case.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {PRIORITY_META.map((p) => {
-                  const checked = selected.includes(p.key);
-                  const disabled = !checked && selected.length >= 3;
-                  return (
-                    <label
-                      key={p.key}
-                      className={`checkbox card p-4 cursor-pointer ${
-                        checked
-                          ? "ring-2 ring-[var(--brand-blue)]"
-                          : "hover:border-[var(--brand-blue)]/40"
-                      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => togglePriority(p.key)}
-                      />
-                      <div>
-                        <div className="font-medium">{p.label}</div>
-                        <div className="text-sm text-[var(--muted)]">
-                          {p.note}
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  className="btn bg-white text-[var(--ink)] border border-gray-200"
-                  onClick={() => setStep(1)}
-                >
-                  Back
-                </button>
-                <button
-                  className="btn btn-primary"
-                  disabled={!canContinue}
-                  onClick={() => setStep(3)}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Maturity */}
-          {step === 3 && (
-            <div className="card p-6">
-              <h2 className="text-xl font-semibold mb-2">AI Maturity</h2>
-              <p className="text-[var(--muted)] mb-4">
-                Slide to benchmark your current AI adoption. We’ll infer
-                realistic time savings per employee.
-              </p>
-
-              {/* Slider row */}
-              <div className="mb-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={10}
-                  step={1}
-                  value={maturity}
-                  onChange={(e) => setMaturity(Number(e.target.value))}
-                  className="w-full accent-[var(--brand-blue)]"
-                />
-                <div className="mt-2 flex justify-between text-xs text-[var(--muted)]">
-                  {Array.from({ length: 10 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className={`${
-                        maturity === i + 1 ? "text-[var(--ink)] font-semibold" : ""
-                      }`}
-                    >
-                      {i + 1}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Maturity explanation + Hours box */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                    <div className="text-sm text-[var(--muted)] mb-1">
-                      Selected maturity description
-                    </div>
-                    <div className="font-medium text-[var(--ink)]">
-                      {MATURITY_LABELS[maturity as 1]}
-                    </div>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-[#eef2ff] border border-[#cfd8ff]">
-                  <div className="text-sm text-[var(--ink)]/80 mb-1">
-                    Estimated hours saved
-                  </div>
-                  <div className="text-2xl font-bold text-[var(--ink)]">
-                    {hoursPerEmployeePerWeek}h / employee / week
-                  </div>
-                  <div className="text-sm text-[var(--ink)]/70 mt-1">
-                    Team total: <b>{teamHoursPerWeek}h / week</b>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  className="btn bg-white text-[var(--ink)] border border-gray-200"
-                  onClick={() => setStep(2)}
-                >
-                  Back
-                </button>
-                <button
-                  className="btn btn-primary"
-                  disabled={!canContinue}
-                  onClick={() => setStep(4)}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Training */}
-          {step === 4 && (
-            <div className="card p-6">
-              <h2 className="text-xl font-semibold mb-2">Training</h2>
-              <p className="text-[var(--muted)] mb-4">
-                Combine training time, cost, and program duration to estimate
-                payback and ROI.
-              </p>
-              <div className="grid md:grid-cols-4 gap-4">
-                <Field label="Training hours / employee">
-                  <NumberInput
-                    min={0}
-                    step={1}
-                    value={trainingHoursPerEmployee}
-                    onChange={(e) =>
-                      setTrainingHoursPerEmployee(Number(e.target.value))
-                    }
-                  />
-                </Field>
-                <Field label="Program duration (months)">
-                  <NumberInput
-                    min={1}
-                    step={1}
-                    value={programMonths}
-                    onChange={(e) => setProgramMonths(Number(e.target.value))}
-                  />
-                </Field>
-                <Field label="Avg hourly cost">
-                  <NumberInput
-                    min={1}
-                    step={1}
-                    value={hourlyCost}
-                    onChange={(e) => setHourlyCost(Number(e.target.value))}
-                  />
-                </Field>
-                <Field label="Currency">
-                  <div className="flex flex-wrap gap-2">
-                    {(["EUR", "USD", "GBP", "AUD"] as Currency[]).map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => setCurrency(c)}
-                        className={`btn ${
-                          currency === c
-                            ? "btn-primary"
-                            : "bg-white text-[var(--ink)] border border-gray-200"
-                        }`}
-                      >
-                        {c === "AUD" ? "A$" : CURRENCY_SYMBOL[c]} {c}
-                      </button>
-                    ))}
-                  </div>
-                </Field>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  className="btn bg-white text-[var(--ink)] border border-gray-200"
-                  onClick={() => setStep(3)}
-                >
-                  Back
-                </button>
-                <button
-                  className="btn btn-primary"
-                  disabled={!canContinue}
-                  onClick={() => setStep(5)}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 5: Results */}
-          {step === 5 && (
-            <div className="card p-6">
-              <h2 className="text-xl font-semibold mb-1">Results</h2>
-              <p className="text-[var(--muted)] mb-4">
-                A concise business case you can screenshot or export.
-              </p>
-
-              {/* Headline numbers */}
-              <div className="grid md:grid-cols-4 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-xs text-[var(--muted)] mb-1">
-                    Monthly savings
-                  </div>
-                  <div className="text-xl font-semibold text-[var(--ink)]">
-                    {symbol}
-                    {monthlyValue.toLocaleString()}
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-xs text-[var(--muted)] mb-1">Payback</div>
-                  <div className="text-xl font-semibold text-[var(--ink)]">
-                    {isFinite(paybackMonths) ? `${paybackMonths} months` : "—"}
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-xs text-[var(--muted)] mb-1">
-                    Annual ROI
-                  </div>
-                  <div className="text-xl font-semibold text-[var(--ink)]">
-                    {annualROI ? `${annualROI}×` : "—"}
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-xs text-[var(--muted)] mb-1">
-                    Hours saved / year
-                  </div>
-                  <div className="text-xl font-semibold text-[var(--ink)]">
-                    {Math.round(teamHoursPerMonth * 12).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-
-              {/* Breakdown table */}
-              <div className="rounded-xl border border-[rgba(51,102,254,0.18)] overflow-hidden">
-                <div className="results-head py-3 bg-[#eef2ff]">
-                  <div>Priority</div>
-                  <div>Notes</div>
-                  <div className="text-right">Hours / month</div>
-                  <div className="text-right">Value / month</div>
-                </div>
-                {breakdown.map((row, i) => (
-                  <div key={row.key} className="results-row">
-                    <div className="results-area">{row.label}</div>
-                    <div className="results-note">{row.note}</div>
-                    <div className="results-hours">{row.hours.toLocaleString()}</div>
-                    <div className="results-money">
-                      {symbol}
-                      {row.money.toLocaleString()}
-                    </div>
-                  </div>
+        {/* Step 2 */}
+        <section className="section-card">
+          <h2 className="section-title mb-4">Step 2 · AI Maturity</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Where are you today? (1–10)</label>
+              <input
+                className="w-full"
+                type="range"
+                min={1}
+                max={10}
+                value={maturity}
+                onChange={(e) => setMaturity(+e.target.value)}
+              />
+              <div className="mt-2 flex justify-between text-xs text-white/60">
+                {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                  <span key={n} className={`w-6 text-center ${n === maturity ? "text-white font-semibold" : ""}`}>{n}</span>
                 ))}
-                <div className="results-row font-semibold">
-                  <div className="results-area">Total</div>
-                  <div />
-                  <div className="results-hours">
-                    {teamHoursPerMonth.toLocaleString()}
-                  </div>
-                  <div className="results-money">
-                    {symbol}
-                    {monthlyValue.toLocaleString()}
-                  </div>
-                </div>
               </div>
-
-              <div className="mt-6 grid md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-sm font-medium text-[var(--ink)] mb-1">
-                    Summary
-                  </div>
-                  <ul className="list-disc pl-5 text-[var(--ink)]/80 text-[15px] space-y-1">
-                    <li>
-                      {dept} program covering <b>{employees}</b> employees.
-                    </li>
-                    <li>
-                      AI maturity <b>{maturity}</b> → ~
-                      <b>{hoursPerEmployeePerWeek}h</b>/employee/week saved.
-                    </li>
-                    <li>
-                      Payback in <b>{isFinite(paybackMonths) ? paybackMonths : "—"}</b> months; annual ROI{" "}
-                      <b>{annualROI ? `${annualROI}×` : "—"}</b>.
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="text-sm font-medium text-[var(--ink)] mb-1">
-                    Suggested next steps
-                  </div>
-                  <ul className="list-disc pl-5 text-[var(--ink)]/80 text-[15px] space-y-1">
-                    <li>
-                      Map top 3 workflows for {dept}; ship prompt packs + QA in 2 weeks.
-                    </li>
-                    <li>
-                      Launch “AI Champions” cohort; track usage → retention/cycle-time.
-                    </li>
-                    <li>
-                      Set competency coverage to 60%+; review ROI quarterly.
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-between">
-                <button
-                  className="btn bg-white text-[var(--ink)] border border-gray-200"
-                  onClick={() => setStep(4)}
-                >
-                  Back
-                </button>
-                <button className="btn btn-primary" onClick={resetAll}>
-                  Start over
-                </button>
-              </div>
+              <p className="mt-3 text-sm text-white/80">
+                <span className="font-medium">Selected:</span> {maturity} —{" "}
+                {maturity <= 3
+                  ? "Early: ad-hoc experiments; big wins from prompt basics + workflow mapping."
+                  : maturity <= 6
+                  ? "Emerging: pockets of usage; starting to codify playbooks & guardrails."
+                  : maturity <= 8
+                  ? "Scaling: embedded in key workflows with QA + data hygiene."
+                  : "Advanced: standardized, measurable impact; continuous improvement culture."}
+              </p>
             </div>
-          )}
-        </div>
+
+            <div className="rounded-lg bg-white/5 border border-white/10 p-4">
+              <h3 className="text-sm text-white/70 mb-2">Estimated hours saved</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="kpi-tile">
+                  <div className="kpi-label">Per employee / week</div>
+                  <div className="kpi-value">{hoursPerPersonPerWeek}</div>
+                </div>
+                <div className="kpi-tile">
+                  <div className="kpi-label">Team / week</div>
+                  <div className="kpi-value">{(hoursPerPersonPerWeek * employees).toLocaleString()}</div>
+                </div>
+              </div>
+              <p className="mt-2 text-xs text-white/60">Refine via priorities and training below.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Step 3 */}
+        <section className="section-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title">Step 3 · Priorities</h2>
+            <p className="text-xs text-white/60">Choose up to 3 areas to focus enablement.</p>
+          </div>
+
+          <div className="grid md:grid-cols-5 gap-3">
+            {(Object.keys(LABEL) as Priority[]).map((p) => {
+              const active = selected.includes(p);
+              const room = active || selected.length < 3;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setSelected((prev) => (active ? prev.filter((x) => x !== p) : room ? [...prev, p] : prev))}
+                  className={`btn-choice ${active ? "btn-choice--active" : ""}`}
+                >
+                  <div className="font-medium">{LABEL[p]}</div>
+                  <div className="text-xs opacity-80 mt-1">{HELP[p]}</div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Step 4 */}
+        <section className="section-card">
+          <h2 className="section-title mb-4">Step 4 · Training & Duration</h2>
+          <div className="grid md:grid-cols-3 gap-4 md:gap-6">
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Fully-loaded hourly cost ({sym(currency)})</label>
+              <input
+                className="input"
+                type="number"
+                min={0}
+                value={hourlyCost}
+                onChange={(e) => setHourlyCost(+e.target.value || 0)}
+                placeholder="e.g., 35"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Duration (months)</label>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                value={durationMonths}
+                onChange={(e) => setDurationMonths(+e.target.value || 1)}
+                placeholder="e.g., 6"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-white/70 mb-2">Department (for next steps)</label>
+              <input className="input" value={team} readOnly />
+            </div>
+          </div>
+        </section>
+
+        {/* Step 5 */}
+        <section className="section-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-title">Step 5 · Results</h2>
+            <p className="text-xs text-white/60">Modeled impact from your inputs</p>
+          </div>
+
+          <div className="grid md:grid-cols-4 gap-4">
+            <div className="kpi-tile">
+              <div className="kpi-label">Monthly savings</div>
+              <div className="kpi-value">{fmtMoney(kpis.monthly)}</div>
+            </div>
+            <div className="kpi-tile">
+              <div className="kpi-label">Payback</div>
+              <div className="kpi-value">{kpis.payback.toFixed(1)} mo</div>
+            </div>
+            <div className="kpi-tile">
+              <div className="kpi-label">Annual ROI</div>
+              <div className="kpi-value">×{kpis.annualRoi.toFixed(1)}</div>
+            </div>
+            <div className="kpi-tile">
+              <div className="kpi-label">Hours saved / year</div>
+              <div className="kpi-value">{fmt(kpis.hoursYear)}</div>
+            </div>
+          </div>
+
+          <div className="mt-6 overflow-hidden rounded-xl border border-white/10">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="text-left font-medium">Priority</th>
+                  <th className="text-left font-medium">Why it matters</th>
+                  <th className="text-right font-medium">Hours / wk</th>
+                  <th className="text-right font-medium">Est. Value / wk</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(["throughput","quality","onboarding","retention","upskilling"] as Priority[])
+                  .filter((p) => selected.includes(p))
+                  .map((p) => {
+                    const hrs = distribution[p];
+                    const val = hrs * (hourlyCost || 0);
+                    return (
+                      <tr key={p}>
+                        <td>{LABEL[p]}</td>
+                        <td className="text-white/80">{HELP[p]}</td>
+                        <td className="text-right">{fmt(hrs)}</td>
+                        <td className="text-right">{fmtMoney(val)}</td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Total</td>
+                  <td>—</td>
+                  <td className="text-right">{fmt(hoursTeamPerWeek)}</td>
+                  <td className="text-right">{fmtMoney(hoursTeamPerWeek * (hourlyCost || 0))}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="mt-6 text-sm text-white/85">
+            <div className="font-semibold mb-2">Suggested next steps</div>
+            <ul className="list-disc pl-5 space-y-1 text-white/80">
+              <li>Map top 3 workflows for {team}; publish prompt templates.</li>
+              <li>Run a manager-first enablement session; measure in-task usage.</li>
+              <li>Set quarterly ROI reviews; correlate usage with retention.</li>
+              <li>Expand champions cohort; target 60% competency coverage.</li>
+            </ul>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
