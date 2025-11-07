@@ -1,11 +1,9 @@
-// app/layout.tsx
-import './globals.css';
-import type { Metadata } from 'next';
+import "./globals.css";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'AI at Work — Human Productivity ROI',
-  description:
-    'Quantify time saved, payback, and retention impact from training teams to work effectively with AI.',
+  title: "AI at Work — Human Productivity ROI",
+  description: "Estimate impact from training managers & teams to use AI effectively.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
